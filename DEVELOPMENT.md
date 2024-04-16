@@ -86,4 +86,4 @@ Make sure coverage is at the required level before submitting a PR.
 
 ## Questions?
 
-If any part of this documentation is unclear, please open a [new issue](https://github.com/clechasseur/exsb/issues/new/choose) so it can be fixed.
+If any part of this documentation is unclear, please open a [new issue](https://github.com/clechasseur/auxiliaire/issues/new/choose) so it can be fixed.

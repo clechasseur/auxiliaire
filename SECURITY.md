@@ -8,4 +8,4 @@
 
 ## Reporting a Vulnerability
 
-If you find a vulnerability in this crate or one of its dependencies, you can [report it privately](https://github.com/clechasseur/exsb/security/advisories/new).
+If you find a vulnerability in this crate or one of its dependencies, you can [report it privately](https://github.com/clechasseur/auxiliaire/security/advisories/new).
