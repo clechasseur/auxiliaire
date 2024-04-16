@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  # TODO re-enable once project is set up properly if you have bins to publish, otherwise remove the workflow
+  #release:
+  #  types: [created]
+  workflow_dispatch:
+
+jobs:
+  build-release-files:
+    name: Build release files for ${{ matrix.arch }}-${{ matrix.platform }} with Rust ${{ matrix.toolchain }}
+    if: github.repository_owner == 'clechasseur' # Don't build on forks
+    strategy:
+      matrix:
+        toolchain: [ stable ]
+        arch: [ aarch64, x86_64 ]
+        platform: [ unknown-linux-gnu, unknown-linux-musl, unknown-freebsd, apple-darwin, pc-windows-msvc ]
+        include:
+          - os: ubuntu-latest
+          - platform: apple-darwin
+            os: macos-latest
+          - platform: pc-windows-msvc
+            os: windows-latest
+          - crt-static: false
+          - link-self-contained: false
+          - platform: pc-windows-msvc
+            crt-static: true
+          - platform: unknown-linux-musl
+            crt-static: true
+            link-self-contained: true
+        exclude:
+          - arch: aarch64
+            platform: unknown-freebsd
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust toolchain ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          cache: false
+
+      - name: Setup cross-compilation tools
+        uses: taiki-e/setup-cross-toolchain-action@c114b921db9152eab3e828fb7e26eb958ddd9f6d # v1.21.0
+        with:
+          target: ${{ matrix.arch }}-${{ matrix.platform }}
+
+      - name: Set flag to link crt-static
+        run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> ${GITHUB_ENV}
+        if: ${{ matrix.crt-static }}
+
+      - name: Set flag to link self-contained
+        run: echo "RUSTFLAGS=${RUSTFLAGS} -C link-self-contained=yes" >> ${GITHUB_ENV}
+        if: ${{ matrix.link-self-contained }}
+
+      - name: Build binaries and upload to GitHub release
+        uses: taiki-e/upload-rust-binary-action@116e64492098f73785ffb2cf4c498df22c85e7a5 # v1.20.0
+        with:
+          bin: YOUR-BINS-HERE # TODO replace this with a comma-separated list of bins to publish
+          token: ${{ secrets.GITHUB_TOKEN }}
+          archive: $bin-$target-$tag # TODO if you have mulitiple bins, replace $bin here
+          target: ${{ matrix.arch }}-${{ matrix.platform }}
+          include: LICENSE,README.md
+          leading-dir: true

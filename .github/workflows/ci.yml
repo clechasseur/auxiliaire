@@ -1,0 +1,243 @@
+name: CI
+
+on:
+  push:
+
+env:
+  CI: 1
+
+jobs:
+  clippy:
+    name: Clippy validation${{ matrix.all-features && ' with all features' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        all-features: [ false ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust with clippy
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Run clippy
+        uses: clechasseur/rs-clippy-check@6489db34e7d7a162364f8ee3d7ad2cd1060dc1d7 # v3.0.3
+        with:
+          args: --workspace --all-targets ${{ matrix.all-features && '--all-features' || '' }} -- -D warnings
+
+  fmt:
+    name: Rustfmt check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust nightly with rustfmt
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: nightly
+          components: rustfmt
+          cache: false
+
+      - name: Run Rustfmt
+        uses: clechasseur/rs-fmt-check@365257820e09c88bfb0c0dc696c250d858831f42 # v2.0.3
+        with:
+          args: --all
+
+  msrv-check:
+    name: MSRV check for Rust ${{ matrix.toolchain }} on ${{ matrix.os }}${{ matrix.all-features && ' with all features' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ 1.60.0 ] # TODO: change for your minimum supported Rust version
+        os: [ ubuntu, macos, windows ]
+        all-features: [ false ]
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust nightly toolchain
+        if: ${{ matrix.toolchain != 'nightly' }}
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: nightly
+          cache: false
+
+      - name: Install Rust toolchain ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          cache: false
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+        with:
+          prefix-key: v5-rust
+          key: all-features-${{ matrix.all-features }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
+
+      - name: Install required tools
+        uses: taiki-e/install-action@99774fec7fd4f75144bd0134a24a992297768308 # v2.32.17
+        with:
+          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv-prep
+
+      - name: Run checks using cargo-minimal-versions
+        run: just all_features=${{ matrix.all-features }} check-minimal
+
+  build:
+    name: Build for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }} on ${{ matrix.os }}${{ matrix.ignore-lock && ' without Cargo.lock' || '' }}${{ matrix.all-features && ' with all features' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ 1.70.0, stable, beta, nightly ]
+        os: [ ubuntu, macos, windows ]
+        ignore-lock: [ false, true ]
+        all-features: [ false ]
+        include:
+          - experimental: false
+          - toolchain: beta
+            experimental: true
+          - toolchain: nightly
+            experimental: true
+    runs-on: ${{ matrix.os }}-latest
+    continue-on-error: ${{ matrix.experimental }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Remove Cargo.lock
+        if: ${{ matrix.ignore-lock }}
+        run: rm Cargo.lock
+
+      - name: Install Rust toolchain ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          cache: false
+
+      - name: Rust Cache
+        if: ${{ !matrix.experimental }}
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+        with:
+          prefix-key: v1-rust
+          key: ignore-lock-${{ matrix.ignore-lock }}-all-features-${{ matrix.all-features }}
+
+      - name: Install just
+        uses: taiki-e/install-action@99774fec7fd4f75144bd0134a24a992297768308 # v2.32.17
+        with:
+          tool: just
+
+      - name: Run checks
+        run: just all_features=${{ matrix.all-features }} check
+
+      - name: Run tests
+        run: just all_features=${{ matrix.all-features }} test
+
+  tarpaulin:
+    # Note: there seems to be an issue in `cargo-tarpaulin` when using Rust 1.75.0 or later - it reports some missing line coverage.
+    # I've entered an issue: https://github.com/xd009642/tarpaulin/issues/1438
+    # In the meantime, let's pin the Rust version used for code coverage to 1.74.1 until we know what's happening.
+    name: Code coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: 1.74.1
+          cache: false
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+        with:
+          cache-targets: false
+
+      - name: Install cargo-tarpaulin
+        uses: taiki-e/install-action@99774fec7fd4f75144bd0134a24a992297768308 # v2.32.17
+        with:
+          tool: cargo-tarpaulin
+
+      - name: Run cargo-tarpaulin
+        uses: clechasseur/rs-cargo@060b7ed8caf4a0ae2a780a894042c22584a5451b # v2.0.3
+        with:
+          command: tarpaulin
+
+      - name: Upload code coverage results to codecov.io
+        uses: codecov/codecov-action@84508663e988701840491b86de86b666e8a86bed # v4.3.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: code-coverage-report
+          path: |
+            cobertura.xml
+            tarpaulin-report.html
+
+  doc:
+    name: Rustdoc check for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [ stable, nightly ]
+        include:
+          - experimental: false
+          - toolchain: nightly
+            experimental: true
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust toolchain ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          cache: false
+
+      - name: Rust Cache
+        if: ${{ !matrix.experimental }}
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+        with:
+          cache-targets: false
+
+      - name: Install just
+        uses: taiki-e/install-action@99774fec7fd4f75144bd0134a24a992297768308 # v2.32.17
+        with:
+          tool: just
+
+      - name: Generate doc using rustdoc
+        run: just doc
+
+  publish-dry-run:
+    name: Publish dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
+        with:
+          toolchain: stable
+          cache: false
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+        with:
+          cache-targets: false
+
+      - name: Perform publish dry-run
+        uses: clechasseur/rs-cargo@060b7ed8caf4a0ae2a780a894042c22584a5451b # v2.0.3
+        with:
+          command: publish
+          args: --dry-run
