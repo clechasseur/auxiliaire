@@ -28,9 +28,9 @@ pub struct BackupArgs {
     #[arg(short, long, value_enum, default_value_t = SolutionStatus::Submitted)]
     pub status: SolutionStatus,
 
-    /// Overwrite exercises that have already been downloaded
-    #[arg(short, long, default_value_t = false)]
-    pub force: bool,
+    /// How to handle solutions that already exist on disk
+    #[arg(short, long, value_enum, default_value_t = OverwritePolicy::IfNewer)]
+    pub overwrite: OverwritePolicy,
 
     /// Determine what solutions to backup without downloading them
     #[arg(long, default_value_t = false)]
@@ -39,6 +39,28 @@ pub struct BackupArgs {
     /// Maximum number of concurrent downloads
     #[arg(short, long, default_value_t = 4)]
     pub max_downloads: usize,
+}
+
+impl BackupArgs {
+    /// Determines if the given [`Solution`] should be backed up.
+    pub fn solution_matches(&self, solution: &Solution) -> bool {
+        self.track_matches(&solution.track.name)
+            && self.exercise_matches(&solution.exercise.name)
+            && self.solution_status_matches(solution.status.try_into().ok())
+    }
+
+    fn track_matches(&self, track_name: &str) -> bool {
+        self.track.is_empty() || self.track.iter().any(|t| t == track_name)
+    }
+
+    fn exercise_matches(&self, exercise_name: &str) -> bool {
+        self.exercise.is_empty() || self.exercise.iter().any(|e| e == exercise_name)
+    }
+
+    fn solution_status_matches(&self, solution_status: Option<SolutionStatus>) -> bool {
+        self.status == SolutionStatus::Submitted
+            || solution_status.map_or(false, |st| st >= self.status)
+    }
 }
 
 /// Possible solution status to filter for (see [`BackupArgs::status`]).
@@ -55,35 +77,27 @@ pub enum SolutionStatus {
 }
 
 impl TryFrom<solution::Status> for SolutionStatus {
-    type Error = ();
+    type Error = solution::Status;
 
     fn try_from(value: solution::Status) -> Result<Self, Self::Error> {
         match value {
-            solution::Status::Iterated => Ok(SolutionStatus::Submitted),
-            solution::Status::Completed => Ok(SolutionStatus::Completed),
-            solution::Status::Published => Ok(SolutionStatus::Published),
-            _ => Err(()),
+            solution::Status::Iterated => Ok(Self::Submitted),
+            solution::Status::Completed => Ok(Self::Completed),
+            solution::Status::Published => Ok(Self::Published),
+            unsupported_solution_status => Err(unsupported_solution_status),
         }
     }
 }
 
-impl BackupArgs {
-    /// Determines if the given [`Solution`] should be backed up.
-    pub fn solution_matches(&self, solution: &Solution) -> bool {
-        self.track_matches(&solution.track.name) && self.exercise_matches(&solution.exercise.name) &&
-            self.solution_status_matches(solution.status.try_into().ok())
-    }
+/// Policy used to decide what to do if a solution already exists on disk (see [`BackupArgs::overwrite`]).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum OverwritePolicy {
+    /// Always overwrite existing solutions
+    Always,
 
-    fn track_matches(&self, track_name: &str) -> bool {
-        self.track.is_empty() || self.track.iter().any(|t| t == track_name)
-    }
+    /// Overwrite existing solutions if there is a newer version
+    IfNewer,
 
-    fn exercise_matches(&self, exercise_name: &str) -> bool {
-        self.exercise.is_empty() || self.exercise.iter().any(|e| e == exercise_name)
-    }
-
-    fn solution_status_matches(&self, solution_status: Option<SolutionStatus>) -> bool {
-        self.status == SolutionStatus::Submitted
-            || solution_status.map_or(false, |st| st >= self.status)
-    }
+    /// Never overwrite existing solutions
+    Never,
 }

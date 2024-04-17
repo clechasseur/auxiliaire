@@ -7,8 +7,8 @@
 #![cfg_attr(any(nightly_rustc, docsrs), feature(doc_cfg))]
 
 pub mod command;
-pub(crate) mod download_limiter;
 pub mod error;
+pub(crate) mod limiter;
 pub(crate) mod task_pool;
 
 use std::str::FromStr;

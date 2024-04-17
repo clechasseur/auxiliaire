@@ -1,0 +1,16 @@
+meta {
+  name: Get Solutions
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{v2_api_base_url}}/solutions?track_slug={{track_slug}}&per_page=50
+  body: none
+  auth: none
+}
+
+query {
+  track_slug: {{track_slug}}
+  per_page: 50
+}

@@ -1,7 +1,7 @@
 name: Release
 
 on:
-  # TODO re-enable once project is set up properly if you have bins to publish, otherwise remove the workflow
+  # TODO re-enable once project is set up properly for publishing
   #release:
   #  types: [created]
   workflow_dispatch:
@@ -60,9 +60,9 @@ jobs:
       - name: Build binaries and upload to GitHub release
         uses: taiki-e/upload-rust-binary-action@116e64492098f73785ffb2cf4c498df22c85e7a5 # v1.20.0
         with:
-          bin: YOUR-BINS-HERE # TODO replace this with a comma-separated list of bins to publish
+          bin: auxiliaire
           token: ${{ secrets.GITHUB_TOKEN }}
-          archive: $bin-$target-$tag # TODO if you have mulitiple bins, replace $bin here
+          archive: $bin-$target-$tag
           target: ${{ matrix.arch }}-${{ matrix.platform }}
           include: LICENSE,README.md
           leading-dir: true

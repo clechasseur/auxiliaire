@@ -1,11 +1,11 @@
-//! Main [`exsb`] program entry point.
+//! Main [`auxiliaire`] program entry point.
 //!
-//! Simply delegates to the exsb [`Cli`] wrapper.
+//! Simply delegates to the auxiliaire [`Cli`] wrapper.
 
-use exsb::Cli;
+use auxiliaire::Cli;
 
 /// Main program entry point.
 #[tokio::main]
-async fn main() -> exsb::Result<()> {
+async fn main() -> auxiliaire::Result<()> {
     Cli::execute().await
 }
