@@ -1,15 +1,15 @@
-//! Error types used by the [`exsb`](crate) program.
+//! Error types used by the [`auxiliaire`](crate) program.
 
 use std::fmt::{Display, Formatter};
 
 use anyhow::Context;
 
-/// Error type used by the [`exsb`](crate) program.
+/// Error type used by the [`auxiliaire`](crate) program.
 ///
 /// Currently mapped to [`anyhow::Error`].
 pub type Error = anyhow::Error;
 
-/// Result type used by the [`exsb`](crate) program.
+/// Result type used by the [`auxiliaire`](crate) program.
 ///
 /// Currently mapped to [`anyhow::Result`] in order to use our [`Error`] type.
 pub type Result<T> = anyhow::Result<T>;
@@ -33,7 +33,7 @@ impl MultiError {
 
 impl Display for MultiError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Multiple errors encountered:\n")?;
+        writeln!(f, "multiple errors encountered:\n")?;
         self.0
             .iter()
             .enumerate()

@@ -8,14 +8,14 @@ use tokio::task::JoinSet;
 use crate::error::MultiError;
 use crate::Result;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct TaskPool {
     join_set: JoinSet<Result<()>>,
 }
 
 impl TaskPool {
     pub fn new() -> Self {
-        Self { join_set: JoinSet::new() }
+        Self::default()
     }
 
     pub fn spawn<F>(&mut self, task: F)
@@ -38,7 +38,7 @@ impl TaskPool {
                 Ok(Err(task_error)) => errors.push(task_error),
                 Err(join_error) => match join_error.try_into_panic() {
                     Ok(panic_err) => resume_unwind(panic_err),
-                    Err(join_error) => errors.push(anyhow!("Join error: {join_error}")),
+                    Err(join_error) => errors.push(anyhow!("join error: {join_error}")),
                 },
             }
         }
@@ -55,17 +55,17 @@ mod tests {
     use anyhow::Context;
     use assert_matches::assert_matches;
     use reqwest::get;
-    use wiremock::http::Method::Get;
+    use wiremock::http::Method;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
-    use crate::download_limiter::DownloadLimiter;
+    use crate::limiter::Limiter;
 
     async fn get_mock_server() -> MockServer {
         let mock_server = MockServer::start().await;
 
-        Mock::given(method(Get))
+        Mock::given(method(Method::GET))
             .and(path("/"))
             .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_millis(10)))
             .mount(&mock_server)
@@ -78,7 +78,7 @@ mod tests {
     async fn test_one_download() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
-        let limiter = DownloadLimiter::new(1);
+        let limiter = Limiter::new(1);
 
         task_pool.spawn(async move {
             let _permit = limiter.get_permit();
@@ -94,7 +94,7 @@ mod tests {
     async fn test_multiple_downloads_no_limit() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
-        let limiter = DownloadLimiter::new(100);
+        let limiter = Limiter::new(100);
 
         for _ in 0..10 {
             let uri = mock_server.uri();
@@ -114,7 +114,7 @@ mod tests {
     async fn test_multiple_downloads_with_limit() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
-        let limiter = DownloadLimiter::new(2);
+        let limiter = Limiter::new(2);
 
         for _ in 0..10 {
             let uri = mock_server.uri();
@@ -134,7 +134,7 @@ mod tests {
     async fn test_errors() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
-        let limiter = DownloadLimiter::new(100);
+        let limiter = Limiter::new(100);
 
         for i in 0..10 {
             let uri = mock_server.uri();

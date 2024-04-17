@@ -124,3 +124,8 @@ unprep *extra_args:
 [windows]
 @_rimraf-it target_dir:
     Remove-Item "{{target_dir}}" -Recurse
+
+# ----- Project-specific -----
+
+run *extra_args:
+    {{cargo}} run -- {{extra_args}}

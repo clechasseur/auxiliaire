@@ -7,6 +7,6 @@ macro_rules! build_client {
         if let Some(api_base_url) = $api_base_url {
             builder.api_base_url(api_base_url);
         }
-        builder.build()
+        builder.build()?
     }};
 }

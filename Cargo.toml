@@ -1,18 +1,18 @@
 [package]
-name = "exsb"
+name = "auxiliaire"
 version = "0.1.0"
 authors = [ "Charles Lechasseur <shiftingbeard@gmx.com>" ]
 edition = "2021"
-rust-version = "1.70.0"
+rust-version = "1.74.1"
 
 readme = "README.md"
 license = "MIT"
 
-homepage = "https://github.com/clechasseur/exsb#readme"
-repository = "https://github.com/clechasseur/exsb"
-documentation = "https://github.com/clechasseur/exsb"
+homepage = "https://github.com/clechasseur/auxiliaire#readme"
+repository = "https://github.com/clechasseur/auxiliaire"
+documentation = "https://github.com/clechasseur/auxiliaire"
 
-description = "Command-line tool to backup your Exercism.org solutions"
+description = "Your friendly Exercism.org assistant"
 
 keywords = [ "cli", "exercism" ]
 categories = [ "command-line-utilities" ]
@@ -20,19 +20,21 @@ categories = [ "command-line-utilities" ]
 include = [ "src/**/*", "tests/**/*", "Cargo.lock", "Cargo.toml", "LICENSE", "README.md" ]
 
 [dependencies]
-anyhow = "1.0.79"
-clap = { version = "4.4.18", features = ["derive"] }
-clap-verbosity-flag = "2.1.2"
+anyhow = "1.0.82"
+clap = { version = "4.5.4", features = ["derive"] }
+clap-verbosity-flag = "2.2.0"
 futures = "0.3.30"
-mini_exercism = { version = "2.1.0", features = ["cli"] }
-reqwest = "0.11.23"
-tokio = { version = "1.35.1", features = ["full"] }
+mini_exercism = { version = "3.0.0", features = ["cli"] }
+reqwest = "0.12.3"
+serde = { version = "1.0.198", features = ["derive"] }
+serde_json = "1.0.116"
+tokio = { version = "1.37.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
-assert_cmd = "2.0.13"
+assert_cmd = "2.0.14"
 # TODO re-enable if we need it, otherwise remove it
 #assert_fs = "1.1.1"
 assert_matches = "1.5.0"
-wiremock = "0.5.22"
+wiremock = "0.6.0"
