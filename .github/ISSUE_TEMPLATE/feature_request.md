@@ -9,7 +9,7 @@ assignees: clechasseur
 
 **Is your feature request related to a problem? Please describe.**
 
-A clear and concise description of what the problem is. Ex. I'd like this crate to support [such and such]
+A clear and concise description of what the problem is. Ex. I'd like this program to support [such and such]
 
 **Describe the solution you'd like**
 
