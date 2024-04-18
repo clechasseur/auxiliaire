@@ -1,9 +1,8 @@
 name: Release
 
 on:
-  # TODO re-enable once project is set up properly for publishing
-  #release:
-  #  types: [created]
+  release:
+    types: [created]
   workflow_dispatch:
 
 jobs:

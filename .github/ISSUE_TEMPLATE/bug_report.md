@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: "Report a bug in the crate \U0001F4E6"
+about: "Report a bug \U0001F4E6"
 title: "[BUG] "
 labels: bug
 assignees: clechasseur
@@ -13,16 +13,15 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 
-Include sample code that reproduces the error. If required, attach a sample project that showcases the bug.
+Include instructions on how to reproduce the error, including command-line arguments used.
 
 **Expected behavior**
 
 A clear and concise description of what you expected to happen.
 
 **Environment (please complete the following information):**
- - Rust version: [e.g. 1.72.0]
- - Target: [e.g. `x86_64-unknown-linux-gnu`]
- - Crate version: [e.g. 0.1.0]
+ - OS: [e.g. `Ubuntu 22.04`, `Windows 11`]
+ - Program version: [e.g. 0.1.0]
 
 **Additional context**
 

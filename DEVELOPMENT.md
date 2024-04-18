@@ -4,7 +4,7 @@ This guide is meant for people wishing to contribute to this open-source project
 
 ### Rust
 
-You need at least **Rust 1.70.0** to build this project's code and run the tests. You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
+You need at least **Rust 1.74.1** to build this project's code and run the tests. You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
 If you already have a version of Rust installed via `rustup` but it's too old, you can update by running
 
 ```bash
@@ -76,7 +76,7 @@ Required checks will not pass if either of those report issues.
 
 ### Code coverage
 
-This project's [code coverage settings](codecov.yml) are pretty stringent and require **100% coverage**. To validate this locally, you can run
+This project's [code coverage settings](codecov.yml) are pretty stringent and require **100% coverage** (_NDLR: ...or will someday_). To validate this locally, you can run
 
 ```bash
 just tarpaulin
@@ -86,4 +86,4 @@ Make sure coverage is at the required level before submitting a PR.
 
 ## Questions?
 
-If any part of this documentation is unclear, please open a [new issue](https://github.com/clechasseur/auxiliaire/issues/new/choose) so it can be fixed.
+If any part of this documentation is unclear, please open a [new issue](https://github.com/clechasseur/auxiliaire/issues/new/choose), so it can be fixed.
