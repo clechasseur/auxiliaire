@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-release-files:
-    name: Build release files for ${{ matrix.arch }}-${{ matrix.platform }} with Rust ${{ matrix.toolchain }}
+    name: Build release files for ${{ matrix.arch }}-${{ matrix.platform }}
     if: github.repository_owner == 'clechasseur' # Don't build on forks
     strategy:
       fail-fast: false
