@@ -1,6 +1,6 @@
 [package]
 name = "auxiliaire"
-version = "0.1.0"
+version = "0.1.1"
 authors = [ "Charles Lechasseur <shiftingbeard@gmx.com>" ]
 edition = "2021"
 rust-version = "1.74.1"
@@ -10,7 +10,6 @@ license = "MIT"
 
 homepage = "https://github.com/clechasseur/auxiliaire#readme"
 repository = "https://github.com/clechasseur/auxiliaire"
-documentation = "https://github.com/clechasseur/auxiliaire"
 
 description = "Your friendly Exercism.org assistant"
 
