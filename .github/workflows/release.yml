@@ -12,12 +12,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ stable ]
-        arch: [ aarch64, x86_64 ]
+        arch: [ aarch64, x86_64, universal ]
         platform: [ unknown-linux-gnu, apple-darwin, pc-windows-msvc ]
         include:
-          - arch: universal
-            platform: apple-darwin
           - os: ubuntu-latest
           - platform: apple-darwin
             os: macos-latest
@@ -29,6 +26,10 @@ jobs:
         exclude:
           - arch: aarch64
             platform: unknown-linux-gnu
+          - arch: universal
+            platform: unknown-linux-gnu
+          - arch: universal
+            platform: pc-windows-msvc
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -36,10 +37,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
-      - name: Install Rust toolchain ${{ matrix.toolchain }}
+      - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@b113a30d27a8e59c969077c0a0168cc13dab5ffc # v1.8.0
         with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: stable
           cache: false
 
       - name: Setup cross-compilation tools
