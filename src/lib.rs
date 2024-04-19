@@ -1,4 +1,7 @@
-//! TODO
+//! A helpful command-line tool for [Exercism.org](https://exercism.org) users.
+//!
+//! This crate is used to by the `auxiliaire` program and makes no guarantees on API stability.
+//! For more information on the tool, see the [GitHub repo](https://github.com/clechasseur/auxiliaire).
 
 #![deny(missing_docs)]
 #![deny(rustdoc::missing_crate_level_docs)]
