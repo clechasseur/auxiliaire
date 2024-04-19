@@ -14,23 +14,21 @@ jobs:
       matrix:
         toolchain: [ stable ]
         arch: [ aarch64, x86_64 ]
-        platform: [ unknown-linux-gnu, unknown-linux-musl, unknown-freebsd, apple-darwin, pc-windows-msvc ]
+        platform: [ unknown-linux-gnu, apple-darwin, pc-windows-msvc ]
         include:
+          - arch: universal
+            platform: apple-darwin
           - os: ubuntu-latest
           - platform: apple-darwin
             os: macos-latest
           - platform: pc-windows-msvc
             os: windows-latest
           - crt-static: false
-          - link-self-contained: false
           - platform: pc-windows-msvc
             crt-static: true
-          - platform: unknown-linux-musl
-            crt-static: true
-            link-self-contained: true
         exclude:
           - arch: aarch64
-            platform: unknown-freebsd
+            platform: unknown-linux-gnu
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -52,10 +50,6 @@ jobs:
       - name: Set flag to link crt-static
         run: echo "RUSTFLAGS=${RUSTFLAGS} -C target-feature=+crt-static" >> ${GITHUB_ENV}
         if: ${{ matrix.crt-static }}
-
-      - name: Set flag to link self-contained
-        run: echo "RUSTFLAGS=${RUSTFLAGS} -C link-self-contained=yes" >> ${GITHUB_ENV}
-        if: ${{ matrix.link-self-contained }}
 
       - name: Build binaries and upload to GitHub release
         uses: taiki-e/upload-rust-binary-action@116e64492098f73785ffb2cf4c498df22c85e7a5 # v1.20.0
