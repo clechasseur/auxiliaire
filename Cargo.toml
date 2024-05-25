@@ -1,7 +1,7 @@
 [package]
 name = "auxiliaire"
 version = "0.1.1"
-authors = [ "Charles Lechasseur <shiftingbeard@gmx.com>" ]
+authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]
 edition = "2021"
 rust-version = "1.74.1"
 
