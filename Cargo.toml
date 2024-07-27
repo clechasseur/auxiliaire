@@ -32,7 +32,7 @@ tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 [dev-dependencies]
-assert_cmd = "2.0.14"
+assert_cmd = "2.0.15"
 # TODO re-enable if we need it, otherwise remove it
 #assert_fs = "1.1.1"
 assert_matches = "1.5.0"
