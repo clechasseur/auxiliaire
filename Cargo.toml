@@ -20,8 +20,8 @@ include = [ "src/**/*", "tests/**/*", "Cargo.lock", "Cargo.toml", "LICENSE", "RE
 
 [dependencies]
 anyhow = "1.0.82"
-clap = { version = "4.5.4", features = ["derive"] }
-clap-verbosity-flag = "2.2.0"
+clap = { version = "4.5.11", features = ["derive"] }
+clap-verbosity-flag = "2.2.1"
 futures = "0.3.30"
 mini_exercism = { version = "3.0.0", features = ["cli"] }
 reqwest = "0.12.4"
