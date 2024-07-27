@@ -17,10 +17,7 @@ message_format_flag := if message_format != "" { "--message-format " + message_f
 target_tuple := ""
 target_tuple_flag := if target_tuple != "" { "--target " + target_tuple } else { "" }
 
-# Note: there seems to be an issue in `cargo-tarpaulin` when using Rust 1.75.0 or later - it reports some missing line coverage.
-# I've entered an issue: https://github.com/xd009642/tarpaulin/issues/1438
-# In the meantime, let's pin the Rust version used for code coverage to 1.74.1 until we know what's happening.
-cargo_tarpaulin := tool + (if toolchain != "" { " +" + toolchain } else { " +1.74.1" }) + " tarpaulin"
+cargo_tarpaulin := cargo + " tarpaulin"
 
 [private]
 default:
