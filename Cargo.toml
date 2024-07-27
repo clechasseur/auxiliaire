@@ -36,4 +36,4 @@ assert_cmd = "2.0.14"
 # TODO re-enable if we need it, otherwise remove it
 #assert_fs = "1.1.1"
 assert_matches = "1.5.0"
-wiremock = "0.6.0"
+wiremock = "0.6.1"
