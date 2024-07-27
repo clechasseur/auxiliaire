@@ -94,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.74.1, stable, beta, nightly ]
+        toolchain: [ 1.75.0, stable, beta, nightly ]
         os: [ ubuntu, macos, windows ]
         ignore-lock: [ false, true ]
         all-features: [ false ]
@@ -105,7 +105,7 @@ jobs:
           - toolchain: nightly
             experimental: true
         exclude:
-          - toolchain: 1.74.1
+          - toolchain: 1.75.0
             ignore-lock: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
@@ -143,9 +143,6 @@ jobs:
         run: just all_features=${{ matrix.all-features }} test
 
   tarpaulin:
-    # Note: there seems to be an issue in `cargo-tarpaulin` when using Rust 1.75.0 or later - it reports some missing line coverage.
-    # I've entered an issue: https://github.com/xd009642/tarpaulin/issues/1438
-    # In the meantime, let's pin the Rust version used for code coverage to 1.74.1 until we know what's happening.
     name: Code coverage
     runs-on: ubuntu-latest
     steps:
@@ -155,7 +152,7 @@ jobs:
       - name: Install Rust
         uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
         with:
-          toolchain: 1.74.1
+          toolchain: stable
           cache: false
 
       - name: Rust Cache
