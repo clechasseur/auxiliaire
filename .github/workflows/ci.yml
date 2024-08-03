@@ -44,7 +44,7 @@ jobs:
           cache: false
 
       - name: Run Rustfmt
-        uses: clechasseur/rs-fmt-check@ca217af1d08eaeed4d5ee53efde51301fb5a6ece # v2.0.4
+        uses: clechasseur/rs-fmt-check@1a4ebb722c8e8a04f0d2e363c91744f81c968c42 # v2.0.5
         with:
           args: --all
 
