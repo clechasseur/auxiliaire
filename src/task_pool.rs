@@ -2,8 +2,8 @@ use std::fmt::Display;
 use std::future::Future;
 use std::panic::resume_unwind;
 
-use anyhow::anyhow;
-use tokio::task::JoinSet;
+use anyhow::Context;
+use tokio::task::{AbortHandle, JoinSet};
 
 use crate::error::MultiError;
 use crate::Result;
@@ -18,11 +18,11 @@ impl TaskPool {
         Self::default()
     }
 
-    pub fn spawn<F>(&mut self, task: F)
+    pub fn spawn<F>(&mut self, task: F) -> AbortHandle
     where
         F: Future<Output = Result<()>> + Send + 'static,
     {
-        self.join_set.spawn(task);
+        self.join_set.spawn(task)
     }
 
     pub async fn join<C, F>(&mut self, context: F) -> Result<()>
@@ -38,7 +38,11 @@ impl TaskPool {
                 Ok(Err(task_error)) => errors.push(task_error),
                 Err(join_error) => match join_error.try_into_panic() {
                     Ok(panic_err) => resume_unwind(panic_err),
-                    Err(join_error) => errors.push(anyhow!("join error: {join_error}")),
+                    Err(join_error) => errors.push(
+                        Err::<(), _>(join_error)
+                            .with_context(|| "join error")
+                            .unwrap_err(),
+                    ),
                 },
             }
         }
@@ -50,11 +54,16 @@ impl TaskPool {
 //noinspection DuplicatedCode
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use std::time::Duration;
 
     use anyhow::Context;
     use assert_matches::assert_matches;
+    use itertools::Itertools;
     use reqwest::get;
+    use test_log::test;
+    use tokio::sync::Mutex;
+    use tokio::task::JoinError;
     use wiremock::http::Method;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -74,7 +83,7 @@ mod tests {
         mock_server
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn test_one_download() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
@@ -90,7 +99,7 @@ mod tests {
         assert!(task_pool.join(|| "should not happen").await.is_ok());
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn test_multiple_downloads_no_limit() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
@@ -110,7 +119,7 @@ mod tests {
         assert!(task_pool.join(|| "should not happen").await.is_ok());
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn test_multiple_downloads_with_limit() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
@@ -130,7 +139,7 @@ mod tests {
         assert!(task_pool.join(|| "should not happen").await.is_ok());
     }
 
-    #[tokio::test]
+    #[test(tokio::test)]
     async fn test_errors() {
         let mock_server = get_mock_server().await;
         let mut task_pool = TaskPool::new();
@@ -151,5 +160,50 @@ mod tests {
         }
 
         assert!(task_pool.join(|| "error occurred").await.is_err());
+    }
+
+    #[test(tokio::test)]
+    #[should_panic]
+    async fn test_panic() {
+        let mut task_pool = TaskPool::new();
+
+        task_pool.spawn(async {
+            panic!("foo");
+        });
+        let _ = task_pool.join(|| "baz").await;
+    }
+
+    #[test(tokio::test)]
+    async fn test_abort() {
+        let mutex = Arc::new(Mutex::new(0));
+        let task_mutex = Arc::clone(&mutex);
+
+        let _lock = mutex.lock().await;
+
+        let mut task_pool = TaskPool::new();
+        let abort_handle = task_pool.spawn(async move {
+            let _lock = task_mutex.lock().await;
+            unreachable!("should be cancelled before we reach this point");
+        });
+
+        abort_handle.abort();
+        assert_matches!(task_pool.join(|| "foo").await, Err(err) => {
+            assert_eq!("foo", err.to_string());
+            assert_matches!(err.source(), Some(err) => {
+                assert_matches!(err.downcast_ref::<MultiError>(), Some(multi_err) => {
+                    assert!(!multi_err.to_string().is_empty());
+
+                    assert_matches!(multi_err.errors().iter().exactly_one(), Ok(err) => {
+                        assert_eq!("join error", err.to_string());
+
+                        assert_matches!(err.source(), Some(err) => {
+                            assert_matches!(err.downcast_ref::<JoinError>(), Some(join_error) => {
+                                assert!(join_error.is_cancelled());
+                            });
+                        });
+                    });
+                });
+            });
+        });
     }
 }

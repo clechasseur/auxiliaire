@@ -1,4 +1,5 @@
 use assert_cmd::{crate_name, Command};
+use test_log::test;
 
 #[test]
 fn test_backup_basic() {
