@@ -84,6 +84,7 @@ mod tests {
 
     mod cli {
         use clap::CommandFactory;
+        use test_log::test;
 
         use super::*;
 
