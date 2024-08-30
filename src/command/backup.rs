@@ -69,8 +69,10 @@ impl BackupCommand {
                 get_cli_credentials().with_context(|| "failed to get Exercism CLI credentials")
             })?;
 
-        let v1_client = build_client!(api::v1::Client, http_client, credentials, api_base_url);
-        let v2_client = build_client!(api::v2::Client, http_client, credentials, api_base_url);
+        let api_v1_base_url = api_base_url.map(|url| format!("{url}/v1"));
+        let api_v2_base_url = api_base_url.map(|url| format!("{url}/v2"));
+        let v1_client = build_client!(api::v1::Client, http_client, credentials, &api_v1_base_url);
+        let v2_client = build_client!(api::v2::Client, http_client, credentials, &api_v2_base_url);
         let limiter = Limiter::new(args.max_downloads);
 
         Ok(Arc::new(Self { args, v1_client, v2_client, limiter }))
