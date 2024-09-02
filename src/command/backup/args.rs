@@ -31,10 +31,6 @@ pub struct BackupArgs {
     /// How to handle solutions that already exist on disk
     #[arg(short, long, value_enum, default_value_t = OverwritePolicy::IfNewer)]
     pub overwrite: OverwritePolicy,
-    
-    /// Whether to download all iterations of each solution
-    #[arg(short, long = "iterations", default_value_t = false)]
-    pub include_iterations: bool,
 
     /// Determine what solutions to back up without downloading them
     #[arg(long, default_value_t = false)]
@@ -62,14 +58,16 @@ impl BackupArgs {
     }
 
     fn solution_status_matches(&self, solution_status: Option<SolutionStatus>) -> bool {
-        self.status == SolutionStatus::Submitted
-            || solution_status.map_or(false, |st| st >= self.status)
+        solution_status.map_or(false, |st| st >= self.status)
     }
 }
 
 /// Possible solution status to filter for (see [`BackupArgs::status`]).
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum SolutionStatus {
+    /// Do not filter solutions based on their status
+    Any,
+
     /// At least one iteration has been submitted, but exercise has not been marked as complete
     Submitted,
 
@@ -85,6 +83,7 @@ impl TryFrom<solution::Status> for SolutionStatus {
 
     fn try_from(value: solution::Status) -> Result<Self, Self::Error> {
         match value {
+            solution::Status::Started => Ok(Self::Any),
             solution::Status::Iterated => Ok(Self::Submitted),
             solution::Status::Completed => Ok(Self::Completed),
             solution::Status::Published => Ok(Self::Published),
@@ -214,19 +213,24 @@ mod tests {
 
             #[test]
             fn test_solution_filter() {
+                perform_simple_test(&[], &[], Some(SolutionStatus::Any), true);
                 perform_simple_test(&[], &[], Some(SolutionStatus::Submitted), true);
                 perform_simple_test(&[], &[], Some(SolutionStatus::Completed), true);
                 perform_simple_test(&[], &[], Some(SolutionStatus::Published), true);
 
-                // Note: currently, if we pass "Submitted" for the solution status filter
-                // (or leave it blank, since it's the default), then "Started" exercises
-                // are also downloaded. Maybe that's wrong? Might want to revisit.
+                perform_test(
+                    &[],
+                    &[],
+                    Some(SolutionStatus::Any),
+                    Some(solution::Status::Started),
+                    true,
+                );
                 perform_test(
                     &[],
                     &[],
                     Some(SolutionStatus::Submitted),
                     Some(solution::Status::Started),
-                    true,
+                    false,
                 );
                 perform_test(
                     &[],
@@ -243,6 +247,13 @@ mod tests {
                     false,
                 );
 
+                perform_test(
+                    &[],
+                    &[],
+                    Some(SolutionStatus::Any),
+                    Some(solution::Status::Iterated),
+                    true,
+                );
                 perform_test(
                     &[],
                     &[],
@@ -268,6 +279,13 @@ mod tests {
                 perform_test(
                     &[],
                     &[],
+                    Some(SolutionStatus::Any),
+                    Some(solution::Status::Completed),
+                    true,
+                );
+                perform_test(
+                    &[],
+                    &[],
                     Some(SolutionStatus::Submitted),
                     Some(solution::Status::Completed),
                     true,
@@ -287,6 +305,13 @@ mod tests {
                     false,
                 );
 
+                perform_test(
+                    &[],
+                    &[],
+                    Some(SolutionStatus::Any),
+                    Some(solution::Status::Published),
+                    true,
+                );
                 perform_test(
                     &[],
                     &[],
@@ -320,10 +345,7 @@ mod tests {
 
             #[test]
             fn test_all() {
-                assert_eq!(
-                    Err::<SolutionStatus, _>(solution::Status::Started),
-                    solution::Status::Started.try_into()
-                );
+                assert_eq!(Ok(SolutionStatus::Any), solution::Status::Started.try_into());
                 assert_eq!(Ok(SolutionStatus::Submitted), solution::Status::Iterated.try_into());
                 assert_eq!(Ok(SolutionStatus::Completed), solution::Status::Completed.try_into());
                 assert_eq!(Ok(SolutionStatus::Published), solution::Status::Published.try_into());
