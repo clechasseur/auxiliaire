@@ -31,6 +31,10 @@ pub struct BackupArgs {
     /// How to handle solutions that already exist on disk
     #[arg(short, long, value_enum, default_value_t = OverwritePolicy::IfNewer)]
     pub overwrite: OverwritePolicy,
+    
+    /// Whether to download all iterations of each solution
+    #[arg(short, long = "iterations", default_value_t = false)]
+    pub include_iterations: bool,
 
     /// Determine what solutions to back up without downloading them
     #[arg(long, default_value_t = false)]
