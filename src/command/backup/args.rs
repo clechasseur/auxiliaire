@@ -32,6 +32,10 @@ pub struct BackupArgs {
     #[arg(short, long, value_enum, default_value_t = OverwritePolicy::IfNewer)]
     pub overwrite: OverwritePolicy,
 
+    /// Download all iterations of each solution
+    #[arg(short, long = "iterations", default_value_t = false)]
+    pub include_iterations: bool,
+
     /// Determine what solutions to back up without downloading them
     #[arg(long, default_value_t = false)]
     pub dry_run: bool,
@@ -166,6 +170,7 @@ mod tests {
                     exercise: exercises.iter().map(|&e| e.into()).collect(),
                     status: status.unwrap_or(SolutionStatus::Submitted),
                     overwrite: OverwritePolicy::IfNewer,
+                    include_iterations: false,
                     dry_run: false,
                     max_downloads: 4,
                 }
