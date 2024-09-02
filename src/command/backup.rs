@@ -14,14 +14,14 @@ use anyhow::Context;
 use futures::StreamExt;
 use mini_exercism::api;
 use mini_exercism::api::v2::solution::Solution;
-use mini_exercism::api::v2::solutions;
+use mini_exercism::api::v2::{solution, solutions};
 use mini_exercism::cli::get_cli_credentials;
 use mini_exercism::core::Credentials;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::{fs, spawn};
 use tracing::{debug, enabled, info, instrument, trace, Level};
 
-use crate::command::backup::args::{BackupArgs, OverwritePolicy};
+use crate::command::backup::args::{BackupArgs, OverwritePolicy, SolutionStatus};
 use crate::command::backup::state::{
     BackupState, BACKUP_STATE_FILE_NAME, BACKUP_STATE_TEMP_FILE_NAME,
 };
@@ -91,7 +91,7 @@ impl BackupCommand {
         })?;
         trace!(output_path = %output_path.display());
 
-        match spawn(Self::backup_solutions(this.clone(), output_path)).await {
+        match spawn(Self::backup_solutions(Arc::clone(&this), output_path)).await {
             Ok(Ok(())) => {
                 info!("Exercism solutions backup complete");
                 Ok(())
@@ -133,7 +133,7 @@ impl BackupCommand {
                 if !this.args.dry_run || enabled!(Level::DEBUG) {
                     for solution in solutions {
                         task_pool.spawn(Self::backup_solution(
-                            this.clone(),
+                            Arc::clone(&this),
                             output_path.clone(),
                             solution,
                         ));
@@ -191,7 +191,7 @@ impl BackupCommand {
 
             for file in files {
                 task_pool.spawn(Self::backup_one_file(
-                    this.clone(),
+                    Arc::clone(&this),
                     solution.clone(),
                     file,
                     output_path.clone(),
@@ -242,8 +242,8 @@ impl BackupCommand {
             while let Some(bytes) = file_stream.next().await {
                 let bytes = bytes.with_context(|| {
                     format!(
-                        "failed to download file {} in solution to exercise {}/{}",
-                        file, solution.track.name, solution.exercise.name,
+                        "failed to download file {file} in solution to exercise {}/{}",
+                        solution.track.name, solution.exercise.name,
                     )
                 })?;
                 destination_file.write_all(&bytes).await.with_context(|| {
@@ -355,6 +355,12 @@ impl BackupCommand {
                     .unwrap(),
             );
         }
+        if self.args.status == SolutionStatus::Published {
+            // Published is the only status we can actually pass as a filter,
+            // because otherwise we only get solutions with that specific filter
+            // (and not any status that is higher).
+            builder.status(solution::Status::Published);
+        }
 
         builder.build()
     }
@@ -403,7 +409,7 @@ impl BackupCommand {
                     solution.track.name, solution.exercise.name);
                 self.remove_directory(solution_output_path).await?;
             },
-            (true, false, _) => {
+            (true, false, OverwritePolicy::IfNewer) | (true, false, OverwritePolicy::Never) => {
                 trace!(
                     "Solution to {}/{} already exists on disk and is up-to-date; skipping",
                     solution.track.name,
@@ -419,7 +425,7 @@ impl BackupCommand {
                 );
                 return Ok(false);
             },
-            (true, true, _) => {
+            (true, true, OverwritePolicy::IfNewer) | (true, true, OverwritePolicy::Always) => {
                 trace!(
                     "Solution to {}/{} already exists on disk but needs updating; cleaning up...",
                     solution.track.name,
