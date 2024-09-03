@@ -3,6 +3,7 @@
 pub mod args;
 #[macro_use]
 mod detail;
+mod iterations;
 mod state;
 
 use std::collections::HashSet;
@@ -10,7 +11,7 @@ use std::panic::resume_unwind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use futures::StreamExt;
 use mini_exercism::api;
 use mini_exercism::api::v2::solution::Solution;
@@ -22,8 +23,9 @@ use tokio::{fs, spawn};
 use tracing::{debug, enabled, info, instrument, trace, Level};
 
 use crate::command::backup::args::{BackupArgs, OverwritePolicy, SolutionStatus};
+use crate::command::backup::iterations::get_iterations_dir_name;
 use crate::command::backup::state::{
-    BackupState, BACKUP_STATE_FILE_NAME, BACKUP_STATE_TEMP_FILE_NAME,
+    BackupState, AUXILIAIRE_STATE_DIR_NAME, BACKUP_STATE_FILE_NAME, BACKUP_STATE_TEMP_FILE_NAME,
 };
 use crate::limiter::Limiter;
 use crate::task_pool::TaskPool;
@@ -51,6 +53,7 @@ pub struct BackupCommand {
     v1_client: api::v1::Client,
     v2_client: api::v2::Client,
     limiter: Limiter,
+    iterations_dir_name: String,
 }
 
 impl BackupCommand {
@@ -72,8 +75,9 @@ impl BackupCommand {
         let v1_client = build_client!(api::v1::Client, http_client, credentials, api_base_url);
         let v2_client = build_client!(api::v2::Client, http_client, credentials, api_base_url);
         let limiter = Limiter::new(args.max_downloads);
+        let iterations_dir_name = get_iterations_dir_name();
 
-        Ok(Arc::new(Self { args, v1_client, v2_client, limiter }))
+        Ok(Arc::new(Self { args, v1_client, v2_client, limiter, iterations_dir_name }))
     }
 
     /// Execute the backup operation.
@@ -233,10 +237,7 @@ impl BackupCommand {
         if !this.args.dry_run {
             this.create_file_parent_directory(&destination_path).await?;
 
-            let destination_file =
-                fs::File::create(&destination_path).await.with_context(|| {
-                    format!("failed to create local file {}", destination_path.display())
-                })?;
+            let destination_file = fs::File::create(&destination_path).await?;
             let mut destination_file = BufWriter::new(destination_file);
 
             while let Some(bytes) = file_stream.next().await {
@@ -246,14 +247,10 @@ impl BackupCommand {
                         solution.track.name, solution.exercise.name,
                     )
                 })?;
-                destination_file.write_all(&bytes).await.with_context(|| {
-                    format!("failed to write data to file {}", destination_path.display())
-                })?;
+                destination_file.write_all(&bytes).await?;
             }
 
-            destination_file.flush().await.with_context(|| {
-                format!("failed to flush data to file {}", destination_path.display())
-            })?;
+            destination_file.flush().await?;
         }
 
         Ok(())
@@ -306,12 +303,11 @@ impl BackupCommand {
 
     #[instrument(level = "trace", skip(self))]
     async fn create_output_directory(&self, output_path: &Path) -> Result<()> {
-        match self.args.dry_run {
-            true => Ok(()),
-            false => fs::create_dir_all(output_path).await.with_context(|| {
-                format!("failed to create output directory {}", output_path.display())
-            }),
+        if !self.args.dry_run {
+            fs::create_dir_all(output_path).await?;
         }
+
+        Ok(())
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -357,7 +353,7 @@ impl BackupCommand {
         }
         if self.args.status == SolutionStatus::Published {
             // Published is the only status we can actually pass as a filter,
-            // because otherwise we only get solutions with that specific filter
+            // because otherwise we only get solutions with that specific status
             // (and not any status that is higher).
             builder.status(solution::Status::Published);
         }
@@ -380,12 +376,7 @@ impl BackupCommand {
             for track_name in track_names {
                 let mut destination_path = output_path.to_path_buf();
                 destination_path.push(track_name);
-
-                fs::create_dir_all(&destination_path)
-                    .await
-                    .with_context(|| {
-                        format!("failed to create directory for track {track_name}")
-                    })?;
+                fs::create_dir_all(&destination_path).await?;
             }
         }
 
@@ -473,11 +464,35 @@ impl BackupCommand {
     #[instrument(level = "trace", skip(self))]
     async fn remove_directory(&self, dir_path: &Path) -> Result<()> {
         if !self.args.dry_run {
-            fs::remove_dir_all(dir_path)
-                .await
-                .with_context(|| format!("failed to remove directory {}", dir_path.display()))
-        } else {
-            Ok(())
+            let mut dir_content = fs::read_dir(dir_path).await?;
+
+            loop {
+                match dir_content.next_entry().await {
+                    Ok(Some(entry)) if !self.should_skip_dir_entry(&entry.path()) => {
+                        if entry.file_type().await?.is_dir() {
+                            // We won't use this function recursively to delete directories,
+                            // because we currently filter entries in the root directory.
+                            fs::remove_dir_all(&entry.path()).await?;
+                        } else {
+                            fs::remove_file(&entry.path()).await?;
+                        }
+                    },
+                    Ok(Some(_)) => (), // Skip this entry
+                    Ok(None) => break,
+                    Err(err) => return Err(anyhow!(err)),
+                }
+            }
         }
+
+        Ok(())
+    }
+
+    fn should_skip_dir_entry(&self, entry_path: &Path) -> bool {
+        entry_path
+            .file_name()
+            .map(|name| {
+                name == self.iterations_dir_name.as_str() || name == AUXILIAIRE_STATE_DIR_NAME
+            })
+            .unwrap_or(true)
     }
 }

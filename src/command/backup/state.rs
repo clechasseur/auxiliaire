@@ -10,6 +10,7 @@ pub struct BackupState {
     pub iterations: Vec<i32>,
 }
 
+pub const AUXILIAIRE_STATE_DIR_NAME: &str = ".auxiliaire";
 pub const BACKUP_STATE_FILE_NAME: &str = ".auxiliaire/backup_state.json";
 pub const BACKUP_STATE_TEMP_FILE_NAME: &str = ".auxiliaire/backup_state.json.tmp";
 
