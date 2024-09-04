@@ -1,6 +1,19 @@
 {
   "uuid": "00c717b68e1b4213b316df82636f5e0f",
-  "iterations": [
+  "num_iterations": 13,
+  "saved_iterations": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
     13
   ]
 }
