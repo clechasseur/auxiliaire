@@ -262,8 +262,8 @@ impl BackupCommand {
         solution: &Solution,
         solution_output_path: &Path,
     ) -> Result<()> {
-        let mut state = BackupState::for_solution(solution);
-        state.iterations = vec![solution.num_iterations];
+        let mut state = BackupState::for_solution_uuid(&solution.uuid);
+        state.num_iterations = solution.num_iterations;
         let state = serde_json::to_string_pretty(&state).with_context(|| {
             format!(
                 "failed to persist backup state for solution to {}/{} to JSON",
@@ -271,7 +271,7 @@ impl BackupCommand {
             )
         })?;
 
-        let mut temp_state_file_path: PathBuf = solution_output_path.into();
+        let mut temp_state_file_path = solution_output_path.to_path_buf();
         temp_state_file_path.push(BACKUP_STATE_TEMP_FILE_NAME);
         self.create_file_parent_directory(&temp_state_file_path)
             .await?;
@@ -286,7 +286,7 @@ impl BackupCommand {
                 )
             })?;
 
-        let mut state_file_path: PathBuf = solution_output_path.into();
+        let mut state_file_path = solution_output_path.to_path_buf();
         state_file_path.push(BACKUP_STATE_FILE_NAME);
         fs::rename(&temp_state_file_path, &state_file_path)
             .await
@@ -392,7 +392,7 @@ impl BackupCommand {
         let solution_exists = self.directory_exists(solution_output_path).await;
         let solution_needs_update = BackupState::for_backup(solution, solution_output_path)
             .await
-            .needs_backup(solution);
+            .needs_backup(solution)?;
 
         match (solution_exists, solution_needs_update, self.args.overwrite) {
             (true, false, OverwritePolicy::Always) => {
@@ -438,6 +438,22 @@ impl BackupCommand {
                         solution_output_path.display(),
                     )
                 })?;
+
+            if self.args.include_iterations {
+                let mut iterations_output_path = solution_output_path.to_path_buf();
+                iterations_output_path.push(&self.iterations_dir_name);
+
+                fs::create_dir_all(&iterations_output_path)
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to create destination directory for iterations of solution to {}/{}: {}",
+                            solution.track.name,
+                            solution.exercise.name,
+                            iterations_output_path.display(),
+                        )
+                    })?;
+            }
         }
 
         Ok(true)
