@@ -38,10 +38,14 @@ impl BackupState {
                     .map(PersistedBackupState::revise)
                     .map_err(|_| ())
             })
+            .map(|mut state| {
+                state.saved_iterations.sort_unstable();
+                state
+            })
             .unwrap_or_else(|_| Self::for_solution_uuid(&solution.uuid))
     }
 
-    pub fn needs_backup(&self, solution: &Solution) -> Result<bool> {
+    pub fn needs_update(&self, solution: &Solution) -> Result<bool> {
         if self.uuid != solution.uuid {
             return Err(
                 anyhow!(
@@ -153,7 +157,7 @@ mod tests {
                 let solution = get_solution();
                 let state = BackupState::for_solution_uuid(&solution.uuid);
 
-                assert_matches!(state.needs_backup(&solution), Ok(true));
+                assert_matches!(state.needs_update(&solution), Ok(true));
             }
         }
 
@@ -181,7 +185,7 @@ mod tests {
                             let path = test_manifest_path(stringify!($manifest_path));
                             let state = BackupState::for_backup(&solution, &path).await;
 
-                            assert_matches!(state.needs_backup(&solution), Ok(false));
+                            assert_matches!(state.needs_update(&solution), Ok(false));
                         }
 
                         #[tokio::test]
@@ -191,7 +195,7 @@ mod tests {
                             let mut state = BackupState::for_backup(&solution, &path).await;
                             state.uuid = "foo".into();
 
-                            assert_matches!(state.needs_backup(&solution), Err(_));
+                            assert_matches!(state.needs_update(&solution), Err(_));
                         }
 
                         #[tokio::test]
@@ -201,7 +205,7 @@ mod tests {
                             let mut state = BackupState::for_backup(&solution, &path).await;
                             state.num_iterations = solution.num_iterations - 1;
 
-                            assert_matches!(state.needs_backup(&solution), Ok(true));
+                            assert_matches!(state.needs_update(&solution), Ok(true));
                         }
 
                         #[tokio::test]
@@ -211,7 +215,7 @@ mod tests {
                             let mut state = BackupState::for_backup(&solution, &path).await;
                             state.num_iterations = solution.num_iterations + 1;
 
-                            assert_matches!(state.needs_backup(&solution), Err(_));
+                            assert_matches!(state.needs_update(&solution), Err(_));
                         }
                     }
                 };
@@ -226,7 +230,7 @@ mod tests {
                 let path = test_manifest_path("without_backup_state");
                 let state = BackupState::for_backup(&solution, &path).await;
 
-                assert_matches!(state.needs_backup(&solution), Ok(true));
+                assert_matches!(state.needs_update(&solution), Ok(true));
             }
         }
     }
