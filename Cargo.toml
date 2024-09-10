@@ -23,6 +23,7 @@ anyhow = "1.0.89"
 clap = { version = "4.5.18", features = ["derive"] }
 clap-verbosity-flag = "2.2.1"
 futures = "0.3.30"
+itertools = "0.13.0"
 mini_exercism = { version = "4.1.0", features = ["cli"] }
 reqwest = "0.12.7"
 serde = { version = "1.0.210", features = ["derive"] }
@@ -36,6 +37,5 @@ assert_cmd = "2.0.16"
 # TODO re-enable if we need it, otherwise remove it
 #assert_fs = "1.1.1"
 assert_matches = "1.5.0"
-itertools = "0.13.0"
 test-log = "0.2.16"
 wiremock = "0.6.2"

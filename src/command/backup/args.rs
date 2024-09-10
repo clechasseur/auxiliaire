@@ -3,8 +3,9 @@
 use std::path::PathBuf;
 
 use clap::{Args, ValueEnum};
-use mini_exercism::api::v2::solution;
+use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
+use mini_exercism::api::v2::{iteration, solution};
 
 /// Command-line arguments accepted by the [`Backup`](crate::command::Command::Backup) command.
 #[derive(Debug, Clone, Args)]
@@ -36,6 +37,10 @@ pub struct BackupArgs {
     #[arg(short, long = "iterations", default_value_t = false)]
     pub include_iterations: bool,
 
+    /// Clean up iterations on disk that were deleted or unpublished
+    #[arg(long = "clean-up-iterations", default_value_t = true)]
+    pub clean_up_iterations: bool,
+
     /// Determine what solutions to back up without downloading them
     #[arg(long, default_value_t = false)]
     pub dry_run: bool,
@@ -51,6 +56,18 @@ impl BackupArgs {
         self.track_matches(&solution.track.name)
             && self.exercise_matches(&solution.exercise.name)
             && self.solution_status_matches(solution.status.try_into().ok())
+    }
+
+    /// Determines if the given [`Iteration`] should be backed up.
+    ///
+    /// # Notes
+    ///
+    /// There are currently no filters applied when fetching iterations,
+    /// but we'll only keep the [published](mini_exercism::api::v2::iteration::Iteration::is_published)
+    /// ones if our [status filter](Self::status) tells us to.
+    pub fn iteration_matches(&self, iteration: &Iteration) -> bool {
+        iteration.status != iteration::Status::Deleted
+            && (self.status < SolutionStatus::Published || iteration.is_published)
     }
 
     fn track_matches(&self, track_name: &str) -> bool {
@@ -171,6 +188,7 @@ mod tests {
                     status: status.unwrap_or(SolutionStatus::Submitted),
                     overwrite: OverwritePolicy::IfNewer,
                     include_iterations: false,
+                    clean_up_iterations: false,
                     dry_run: false,
                     max_downloads: 4,
                 }
