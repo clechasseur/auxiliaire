@@ -192,13 +192,13 @@ impl BackupCommand {
             )
         })?;
 
-        let (needs_backup, state) = this.solution_needs_backup(&solution, &output_path).await?;
+        let (needs_backup, _state) = this.solution_needs_backup(&solution, &output_path).await?;
         if this.args.dry_run && needs_backup {
             debug!("Files to back up: {}", files.join(", "));
         }
 
         if !this.args.dry_run
-            && this.args.include_iterations
+            && this.args.iterations_sync_policy.sync()
             && this.has_iterations_dir_collision(&files)
         {
             let warning = format!(
@@ -214,15 +214,19 @@ impl BackupCommand {
         }
 
         let matching_iterations = this.get_matching_solution_iterations(&solution).await?;
-        let iteration_ops = this
-            .get_iteration_sync_ops(matching_iterations, state.saved_iterations.iter().copied());
+        let existing_iterations = this
+            .get_existing_iterations(&solution, &output_path)
+            .await?;
+        let iteration_ops = this.get_iteration_sync_ops(matching_iterations, existing_iterations);
 
         if this.args.dry_run {
-            debug!(
-                "Existing iterations to clean up: {}",
-                iteration_ops.existing_iterations_to_clean_up.len()
-            );
-            if this.args.include_iterations {
+            if this.args.iterations_sync_policy.clean_up_old() {
+                debug!(
+                    "Existing iterations to clean up: {}",
+                    iteration_ops.existing_iterations_to_clean_up.len()
+                );
+            }
+            if this.args.iterations_sync_policy.backup_new() {
                 debug!("Iterations to back up: {}", iteration_ops.iterations_to_backup.len());
             }
         } else {
@@ -316,8 +320,7 @@ impl BackupCommand {
         solution: &Solution,
         solution_output_path: &Path,
     ) -> Result<()> {
-        let mut state = BackupState::for_solution_uuid(&solution.uuid);
-        state.num_iterations = solution.num_iterations;
+        let state = BackupState::for_solution(solution.clone());
         let state = serde_json::to_string_pretty(&state).with_context(|| {
             format!(
                 "failed to persist backup state for solution to {}/{} to JSON",
@@ -528,7 +531,7 @@ impl BackupCommand {
                 })?;
         }
 
-        if self.args.include_iterations {
+        if self.args.iterations_sync_policy.sync() {
             let mut iterations_output_path = solution_output_path.to_path_buf();
             iterations_output_path.push(&self.iterations_dir_name);
 
@@ -552,7 +555,7 @@ impl BackupCommand {
         &self,
         solution: &Solution,
     ) -> Result<Vec<Iteration>> {
-        if !self.args.include_iterations {
+        if !self.args.iterations_sync_policy.backup_new() {
             return Ok(vec![]);
         }
 
@@ -575,6 +578,58 @@ impl BackupCommand {
             .filter(|iter| self.args.iteration_matches(iter))
             .sorted_unstable_by_key(|iter| iter.index)
             .collect_vec())
+    }
+
+    #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
+    async fn get_existing_iterations(
+        &self,
+        solution: &Solution,
+        solution_output_path: &Path,
+    ) -> Result<Vec<i32>> {
+        let mut iterations_path = solution_output_path.to_path_buf();
+        iterations_path.push(&self.iterations_dir_name);
+
+        let _permit = self.limiter.get_permit().await;
+        let mut iterations_dir_content =
+            fs::read_dir(&iterations_path).await.with_context(|| {
+                format!(
+                    "failed to list existing backed up iterations for solution to {}/{}",
+                    solution.track.name, solution.exercise.name,
+                )
+            })?;
+
+        let mut iterations = Vec::new();
+        loop {
+            match iterations_dir_content.next_entry().await {
+                Ok(Some(entry)) => {
+                    let iteration = entry
+                        .file_type()
+                        .await
+                        .ok()
+                        .and_then(|file_type| {
+                            file_type.is_dir().then(|| entry.file_name().into_string().ok())
+                        })
+                        .flatten()
+                        .and_then(|file_name| {
+                            file_name.parse::<i32>().ok()
+                        });
+                    if let Some(iteration) = iteration {
+                        iterations.push(iteration);
+                    }
+                },
+                Ok(None) => break,
+                Err(err) => return Err(err).with_context(|| {
+                    format!(
+                        "failed to scan existing iterations back up directory for solution to {}/{}",
+                        solution.track.name,
+                        solution.exercise.name,
+                    )
+                }),
+            }
+        }
+
+        iterations.sort_unstable();
+        Ok(iterations)
     }
 
     #[instrument(level = "trace", skip_all, ret(level = "trace"))]
@@ -600,7 +655,7 @@ impl BackupCommand {
         }
         ops.existing_iterations_to_clean_up.extend(existing_it);
 
-        if !self.args.clean_up_iterations {
+        if !self.args.iterations_sync_policy.clean_up_old() {
             ops.existing_iterations_to_clean_up.clear();
         }
         ops

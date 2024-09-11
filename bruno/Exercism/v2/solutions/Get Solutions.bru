@@ -5,12 +5,13 @@ meta {
 }
 
 get {
-  url: {{v2_api_base_url}}/solutions?track_slug={{track_slug}}&per_page=50
+  url: {{v2_api_base_url}}/solutions?track_slug={{track_slug}}&criteria={{solution_criteria}}&per_page=50
   body: none
-  auth: none
+  auth: inherit
 }
 
-query {
+params:query {
   track_slug: {{track_slug}}
+  criteria: {{solution_criteria}}
   per_page: 50
 }

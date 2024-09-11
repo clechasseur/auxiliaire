@@ -33,13 +33,9 @@ pub struct BackupArgs {
     #[arg(short, long, value_enum, default_value_t = OverwritePolicy::IfNewer)]
     pub overwrite: OverwritePolicy,
 
-    /// Download all iterations of each solution
-    #[arg(short, long = "iterations", default_value_t = false)]
-    pub include_iterations: bool,
-
-    /// Clean up iterations on disk that were deleted or unpublished
-    #[arg(long = "clean-up-iterations", default_value_t = true)]
-    pub clean_up_iterations: bool,
+    /// Whether to also back up iterations and how
+    #[arg(short, long = "iterations", value_enum, default_value_t = IterationsSyncPolicy::DoNotSync)]
+    pub iterations_sync_policy: IterationsSyncPolicy,
 
     /// Determine what solutions to back up without downloading them
     #[arg(long, default_value_t = false)]
@@ -126,6 +122,40 @@ pub enum OverwritePolicy {
     Never,
 }
 
+/// Policy used to decide whether to also back up iterations (see [`BackupArgs::iterations_sync_policy`]).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum IterationsSyncPolicy {
+    /// Do not back up iterations
+    DoNotSync,
+
+    /// Back up new iterations, do not touch existing iterations on disk
+    New,
+
+    /// Back up new iterations and remove existing iterations on disk that no longer exist
+    FullSync,
+
+    /// Remove existing iterations on disk
+    CleanUp,
+}
+
+impl IterationsSyncPolicy {
+    /// Whether this policy implies synchronizing iterations at all, regardless of how.
+    pub fn sync(&self) -> bool {
+        self != &Self::DoNotSync
+    }
+
+    /// Whether this policy implies backing up new iterations.
+    pub fn backup_new(&self) -> bool {
+        self == &Self::New || self == &Self::FullSync
+    }
+
+    /// Whether this policy implies cleaning up old iterations on disk that no
+    /// longer exist or are no longer published.
+    pub fn clean_up_old(&self) -> bool {
+        self == &Self::FullSync || self == &Self::CleanUp
+    }
+}
+
 #[cfg(test)]
 mod tests {
     mod backup_args {
@@ -135,7 +165,9 @@ mod tests {
             use mini_exercism::api::v2::solution;
             use mini_exercism::api::v2::solution::Solution;
 
-            use crate::command::backup::args::{BackupArgs, OverwritePolicy, SolutionStatus};
+            use crate::command::backup::args::{
+                BackupArgs, IterationsSyncPolicy, OverwritePolicy, SolutionStatus,
+            };
 
             fn get_solution(status: Option<solution::Status>) -> Solution {
                 let json = r#"{
@@ -187,8 +219,7 @@ mod tests {
                     exercise: exercises.iter().map(|&e| e.into()).collect(),
                     status: status.unwrap_or(SolutionStatus::Submitted),
                     overwrite: OverwritePolicy::IfNewer,
-                    include_iterations: false,
-                    clean_up_iterations: false,
+                    iterations_sync_policy: IterationsSyncPolicy::DoNotSync,
                     dry_run: false,
                     max_downloads: 4,
                 }
@@ -376,6 +407,35 @@ mod tests {
                     Err::<SolutionStatus, _>(solution::Status::Unknown),
                     solution::Status::Unknown.try_into()
                 );
+            }
+        }
+    }
+
+    mod iterations_sync_policy {
+        use crate::command::backup::args::IterationsSyncPolicy;
+
+        fn perform_checks(
+            policy: IterationsSyncPolicy,
+            expect_sync: bool,
+            expect_backup_new: bool,
+            expect_clean_up_old: bool,
+        ) {
+            assert_eq!(expect_sync, policy.sync());
+            assert_eq!(expect_backup_new, policy.backup_new());
+            assert_eq!(expect_clean_up_old, policy.clean_up_old());
+        }
+
+        #[test]
+        fn test_all() {
+            let expectations = [
+                (IterationsSyncPolicy::DoNotSync, false, false, false),
+                (IterationsSyncPolicy::New, true, true, false),
+                (IterationsSyncPolicy::FullSync, true, true, true),
+                (IterationsSyncPolicy::CleanUp, true, false, true),
+            ];
+
+            for (policy, expect_sync, expect_backup_new, expect_clean_up_old) in expectations {
+                perform_checks(policy, expect_sync, expect_backup_new, expect_clean_up_old);
             }
         }
     }
