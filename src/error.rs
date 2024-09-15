@@ -46,7 +46,7 @@ impl Display for MultiError {
         self.0
             .iter()
             .enumerate()
-            .try_fold((), |_, (i, error)| writeln!(f, "{i}: {error}\n"))
+            .try_fold((), |_, (i, error)| writeln!(f, "{i}: {error:?}\n"))
     }
 }
 

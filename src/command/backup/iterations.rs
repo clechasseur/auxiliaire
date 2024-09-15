@@ -14,3 +14,9 @@ pub struct SyncOps {
     pub existing_iterations_to_clean_up: Vec<i32>,
     pub iterations_to_backup: Vec<Iteration>,
 }
+
+impl SyncOps {
+    pub fn is_empty(&self) -> bool {
+        self.existing_iterations_to_clean_up.is_empty() && self.iterations_to_backup.is_empty()
+    }
+}
