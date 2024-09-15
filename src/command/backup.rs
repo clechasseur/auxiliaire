@@ -23,7 +23,7 @@ use mini_exercism::cli::get_cli_credentials;
 use mini_exercism::core::Credentials;
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::{fs, spawn};
-use tracing::{debug, enabled, info, instrument, trace, warn, Level};
+use tracing::{debug, enabled, error, info, instrument, trace, warn, Level};
 
 use crate::command::backup::args::{BackupArgs, OverwritePolicy, SolutionStatus};
 use crate::command::backup::iterations::{
@@ -176,9 +176,6 @@ impl BackupCommand {
         mut output_path: PathBuf,
         solution: Solution,
     ) -> Result<()> {
-        if !this.args.dry_run {
-            debug!("Starting solution backup");
-        }
         trace!(?solution);
 
         output_path.push(&solution.track.name);
@@ -192,15 +189,13 @@ impl BackupCommand {
             )
         })?;
 
-        let (needs_backup, _state) = this.solution_needs_backup(&solution, &output_path).await?;
+        let (needs_backup, solution_exists) =
+            this.solution_needs_backup(&solution, &output_path).await?;
         if this.args.dry_run && needs_backup {
             debug!("Files to back up: {}", files.join(", "));
         }
 
-        if !this.args.dry_run
-            && this.args.iterations_sync_policy.sync()
-            && this.has_iterations_dir_collision(&files)
-        {
+        if this.args.iterations_sync_policy.sync() && this.has_iterations_dir_collision(&files) {
             let warning = format!(
                 "solution to {}/{} contains a file whose name collides with the iterations backup directory name ({}); consider setting the {} environment variable to change the directory name",
                 solution.track.name,
@@ -210,7 +205,9 @@ impl BackupCommand {
             );
 
             warn!("{}", warning);
-            return Err(anyhow!("{}", warning));
+            if !this.args.dry_run {
+                return Err(anyhow!("{}", warning));
+            }
         }
 
         let matching_iterations = this.get_matching_solution_iterations(&solution).await?;
@@ -219,21 +216,31 @@ impl BackupCommand {
             .await?;
         let iteration_ops = this.get_iteration_sync_ops(matching_iterations, existing_iterations);
 
-        if this.args.dry_run {
-            if this.args.iterations_sync_policy.clean_up_old() {
-                debug!(
-                    "Existing iterations to clean up: {}",
-                    iteration_ops.existing_iterations_to_clean_up.len()
-                );
-            }
-            if this.args.iterations_sync_policy.backup_new() {
-                debug!("Iterations to back up: {}", iteration_ops.iterations_to_backup.len());
-            }
-        } else {
-            trace!(?iteration_ops);
+        if this.args.iterations_sync_policy.clean_up_old()
+            && !iteration_ops.existing_iterations_to_clean_up.is_empty()
+        {
+            debug!(
+                "Existing iterations to clean up: {}",
+                iteration_ops.existing_iterations_to_clean_up.len()
+            );
+        }
+        if this.args.iterations_sync_policy.backup_new()
+            && !iteration_ops.iterations_to_backup.is_empty()
+        {
+            debug!("Iterations to back up: {}", iteration_ops.iterations_to_backup.len());
         }
 
-        if !this.args.dry_run || enabled!(Level::TRACE) {
+        if !this.args.dry_run {
+            this.create_solution_directories(
+                needs_backup,
+                solution_exists,
+                &solution,
+                &output_path,
+            )
+            .await?;
+        }
+
+        if !this.args.dry_run || enabled!(Level::DEBUG) {
             let mut task_pool = TaskPool::new();
 
             if needs_backup {
@@ -247,7 +254,27 @@ impl BackupCommand {
                 }
             }
 
-            // TODO sync iterations
+            if !iteration_ops.is_empty() {
+                let mut iterations_output_path = output_path.clone();
+                iterations_output_path.push(&this.iterations_dir_name);
+
+                for existing_iteration in iteration_ops.existing_iterations_to_clean_up {
+                    task_pool.spawn(Self::remove_one_existing_iteration(
+                        Arc::clone(&this),
+                        solution.clone(),
+                        existing_iteration,
+                        iterations_output_path.clone(),
+                    ));
+                }
+                for new_iteration in iteration_ops.iterations_to_backup {
+                    task_pool.spawn(Self::backup_one_iteration(
+                        Arc::clone(&this),
+                        solution.clone(),
+                        new_iteration,
+                        iterations_output_path.clone(),
+                    ));
+                }
+            }
 
             task_pool
                 .join(|| {
@@ -257,7 +284,9 @@ impl BackupCommand {
                     )
                 })
                 .await?;
+        }
 
+        if !this.args.dry_run {
             let _permit = this.limiter.get_permit().await;
             this.save_backup_state(&solution, &output_path).await?;
         }
@@ -274,11 +303,11 @@ impl BackupCommand {
         file: String,
         mut destination_path: PathBuf,
     ) -> Result<()> {
-        let _permit = this.limiter.get_permit().await;
-        let mut file_stream = this.v1_client.get_file(&solution.uuid, &file).await;
-
         destination_path.extend(file.split('/'));
         trace!(destination_path = %destination_path.display());
+
+        let _permit = this.limiter.get_permit().await;
+        let mut file_stream = this.v1_client.get_file(&solution.uuid, &file).await;
 
         if !this.args.dry_run {
             this.create_file_parent_directory(&destination_path).await?;
@@ -302,16 +331,100 @@ impl BackupCommand {
         Ok(())
     }
 
+    #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, iteration.index = iteration))]
+    async fn remove_one_existing_iteration(
+        this: Arc<Self>,
+        solution: Solution,
+        iteration: i32,
+        mut destination_path: PathBuf,
+    ) -> Result<()> {
+        destination_path.push(iteration.to_string());
+        trace!(destination_path = %destination_path.display());
+
+        if !this.args.dry_run {
+            let _permit = this.limiter.get_permit().await;
+            this.remove_directory(&destination_path)
+                .await
+                .with_context(|| {
+                    format!(
+                        "failed to remove existing iteration {} of solution to {}/{}",
+                        iteration, solution.track.name, solution.exercise.name,
+                    )
+                })?;
+        }
+
+        debug!(
+            "Iteration {} of solution to {}/{} removed from disk",
+            iteration, solution.track.name, solution.exercise.name,
+        );
+
+        Ok(())
+    }
+
     #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, iteration.index))]
-    async fn sync_one_iteration(
-        _this: Arc<Self>,
-        _solution: Solution,
+    async fn backup_one_iteration(
+        this: Arc<Self>,
+        solution: Solution,
         iteration: Iteration,
         mut destination_path: PathBuf,
     ) -> Result<()> {
         destination_path.push(iteration.index.to_string());
+        trace!(destination_path = %destination_path.display());
 
-        todo!()
+        match iteration.submission_uuid {
+            Some(submission_uuid) => {
+                let _permit = this.limiter.get_permit().await;
+                let files = this
+                    .v2_client
+                    .get_submission_files(&solution.uuid, &submission_uuid)
+                    .await
+                    .with_context(|| {
+                        format!(
+                            "failed to fetch files for iteration {} of solution to {}/{}",
+                            iteration.index, solution.track.name, solution.exercise.name,
+                        )
+                    })?
+                    .files;
+
+                for file in files {
+                    let mut file_path = destination_path.clone();
+                    file_path.push(&file.filename);
+
+                    this.create_file_parent_directory(&file_path).await?;
+                    if !this.args.dry_run {
+                        fs::write(&file_path, file.content).await.with_context(|| {
+                            format!(
+                                "failed to save file {} of iteration {} of solution to {}/{}",
+                                file.filename,
+                                iteration.index,
+                                solution.track.name,
+                                solution.exercise.name,
+                            )
+                        })?;
+                    }
+                }
+
+                debug!(
+                    "Iteration {} of solution to {}/{} downloaded",
+                    iteration.index, solution.track.name, solution.exercise.name,
+                );
+            },
+            None => {
+                let error = format!(
+                    "Iteration {} of solution to {}/{} is not marked as deleted but does not have a submission UUID",
+                    iteration.index,
+                    solution.track.name,
+                    solution.exercise.name,
+                );
+
+                error!("{}", error);
+                if !this.args.dry_run {
+                    return Err(anyhow!(error));
+                }
+            },
+        }
+
+        Ok(())
     }
 
     #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
@@ -457,12 +570,17 @@ impl BackupCommand {
             .files)
     }
 
-    #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
+    #[instrument(
+        level = "trace",
+        skip(self, solution),
+        fields(solution.track.name, solution.exercise.name),
+        ret(level = "trace")
+    )]
     async fn solution_needs_backup(
         &self,
         solution: &Solution,
         solution_output_path: &Path,
-    ) -> Result<(bool, BackupState)> {
+    ) -> Result<(bool, bool)> {
         let _permit = self.limiter.get_permit().await;
         let state = BackupState::for_backup(solution, solution_output_path).await;
 
@@ -471,16 +589,8 @@ impl BackupCommand {
 
         let needs_backup = match (solution_exists, solution_needs_update, self.args.overwrite) {
             (true, false, OverwritePolicy::Always) => {
-                trace!("Solution to {}/{} already up-to-date on disk, but needs to be overwritten; cleaning up...",
+                trace!("Solution to {}/{} already up-to-date on disk, but needs to be overwritten; will be cleaned up",
                     solution.track.name, solution.exercise.name);
-                self.remove_directory(solution_output_path)
-                    .await
-                    .with_context(|| {
-                        format!(
-                            "failed to clean up existing directory for solution to {}/{}",
-                            solution.track.name, solution.exercise.name,
-                        )
-                    })?;
                 true
             },
             (true, false, OverwritePolicy::IfNewer) | (true, false, OverwritePolicy::Never) => {
@@ -501,10 +611,28 @@ impl BackupCommand {
             },
             (true, true, OverwritePolicy::IfNewer) | (true, true, OverwritePolicy::Always) => {
                 trace!(
-                    "Solution to {}/{} already exists on disk but needs updating; cleaning up...",
+                    "Solution to {}/{} already exists on disk but needs updating; will be cleaned up",
                     solution.track.name,
                     solution.exercise.name
                 );
+                true
+            },
+            (false, _, _) => true,
+        };
+
+        Ok((needs_backup, solution_exists))
+    }
+
+    #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
+    async fn create_solution_directories(
+        &self,
+        needs_backup: bool,
+        solution_exists: bool,
+        solution: &Solution,
+        solution_output_path: &Path,
+    ) -> Result<()> {
+        if needs_backup {
+            if solution_exists {
                 self.remove_directory(solution_output_path)
                     .await
                     .with_context(|| {
@@ -513,12 +641,8 @@ impl BackupCommand {
                             solution.track.name, solution.exercise.name,
                         )
                     })?;
-                true
-            },
-            (false, _, _) => true,
-        };
+            }
 
-        if !self.args.dry_run && needs_backup {
             fs::create_dir_all(solution_output_path)
                 .await
                 .with_context(|| {
@@ -547,7 +671,7 @@ impl BackupCommand {
                 })?;
         }
 
-        Ok((needs_backup, state))
+        Ok(())
     }
 
     #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name))]
@@ -555,7 +679,7 @@ impl BackupCommand {
         &self,
         solution: &Solution,
     ) -> Result<Vec<Iteration>> {
-        if !self.args.iterations_sync_policy.backup_new() {
+        if !self.args.iterations_sync_policy.backup_new() && !self.args.dry_run {
             return Ok(vec![]);
         }
 
@@ -586,8 +710,15 @@ impl BackupCommand {
         solution: &Solution,
         solution_output_path: &Path,
     ) -> Result<Vec<i32>> {
+        if !self.args.iterations_sync_policy.sync() && !self.args.dry_run {
+            return Ok(vec![]);
+        }
+
         let mut iterations_path = solution_output_path.to_path_buf();
         iterations_path.push(&self.iterations_dir_name);
+        if !self.directory_exists(&iterations_path).await {
+            return Ok(vec![]);
+        }
 
         let _permit = self.limiter.get_permit().await;
         let mut iterations_dir_content =
@@ -655,9 +786,6 @@ impl BackupCommand {
         }
         ops.existing_iterations_to_clean_up.extend(existing_it);
 
-        if !self.args.iterations_sync_policy.clean_up_old() {
-            ops.existing_iterations_to_clean_up.clear();
-        }
         ops
     }
 

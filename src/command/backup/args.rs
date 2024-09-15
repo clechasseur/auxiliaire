@@ -158,16 +158,18 @@ impl IterationsSyncPolicy {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     mod backup_args {
+        use super::*;
+
         mod solution_matches {
             use std::path::PathBuf;
 
             use mini_exercism::api::v2::solution;
             use mini_exercism::api::v2::solution::Solution;
 
-            use crate::command::backup::args::{
-                BackupArgs, IterationsSyncPolicy, OverwritePolicy, SolutionStatus,
-            };
+            use super::*;
 
             fn get_solution(status: Option<solution::Status>) -> Solution {
                 let json = r#"{
@@ -392,10 +394,12 @@ mod tests {
     }
 
     mod solution_status {
+        use super::*;
+
         mod try_into {
             use mini_exercism::api::v2::solution;
 
-            use crate::command::backup::args::SolutionStatus;
+            use super::*;
 
             #[test]
             fn test_all() {
@@ -412,7 +416,7 @@ mod tests {
     }
 
     mod iterations_sync_policy {
-        use crate::command::backup::args::IterationsSyncPolicy;
+        use super::*;
 
         fn perform_checks(
             policy: IterationsSyncPolicy,
