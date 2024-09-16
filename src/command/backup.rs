@@ -15,12 +15,12 @@ use std::sync::Arc;
 use anyhow::{anyhow, Context};
 use futures::StreamExt;
 use itertools::Itertools;
-use mini_exercism::api;
 use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
 use mini_exercism::api::v2::{solution, solutions};
 use mini_exercism::cli::get_cli_credentials;
 use mini_exercism::core::Credentials;
+use mini_exercism::{api, http};
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::{fs, spawn};
 use tracing::{debug, enabled, error, info, instrument, trace, warn, Level};
@@ -67,7 +67,7 @@ impl BackupCommand {
     ///
     /// The `api_base_url` parameter should only be set to test using a different Exercism local endpoint.
     pub fn new(args: BackupArgs, api_base_url: Option<&str>) -> Result<Arc<Self>> {
-        let http_client = reqwest::Client::builder()
+        let http_client = http::Client::builder()
             .build()
             .with_context(|| "failed to create HTTP client")?;
         let credentials = args

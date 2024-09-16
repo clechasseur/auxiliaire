@@ -60,7 +60,7 @@ mod tests {
     use anyhow::Context;
     use assert_matches::assert_matches;
     use itertools::Itertools;
-    use reqwest::get;
+    use mini_exercism::http::get;
     use test_log::test;
     use tokio::sync::Mutex;
     use tokio::task::JoinError;
