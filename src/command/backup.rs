@@ -68,6 +68,7 @@ impl BackupCommand {
     /// The `api_base_url` parameter should only be set to test using a different Exercism local endpoint.
     pub fn new(args: BackupArgs, api_base_url: Option<&str>) -> Result<Arc<Self>> {
         let http_client = http::Client::builder()
+            .cookie_store(true)
             .build()
             .with_context(|| "failed to create HTTP client")?;
         let credentials = args
