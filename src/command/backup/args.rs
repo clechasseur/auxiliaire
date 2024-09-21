@@ -168,11 +168,6 @@ mod tests {
         use super::*;
 
         mod solution_matches {
-            use std::path::PathBuf;
-
-            use mini_exercism::api::v2::solution;
-            use mini_exercism::api::v2::solution::Solution;
-
             use super::*;
 
             fn get_solution(status: Option<solution::Status>) -> Solution {
@@ -221,9 +216,9 @@ mod tests {
                 BackupArgs {
                     path: PathBuf::default(),
                     token: None,
-                    track: tracks.iter().map(|&t| t.into()).collect(),
-                    exercise: exercises.iter().map(|&e| e.into()).collect(),
-                    status: status.unwrap_or(SolutionStatus::Submitted),
+                    track: tracks.iter().copied().map(Into::into).collect(),
+                    exercise: exercises.iter().copied().map(Into::into).collect(),
+                    status: status.unwrap_or(SolutionStatus::Any),
                     overwrite: OverwritePolicy::IfNewer,
                     iterations_sync_policy: IterationsSyncPolicy::DoNotSync,
                     dry_run: false,
@@ -393,6 +388,115 @@ mod tests {
                     Some(solution::Status::Published),
                     true,
                 );
+            }
+        }
+
+        mod iteration_matches {
+            use super::*;
+
+            fn get_iteration(
+                status: Option<iteration::Status>,
+                is_published: Option<bool>,
+            ) -> Iteration {
+                let json = r#"{
+                    "uuid": "e44cbc866b1d42e5b276fd2afabb8fe0",
+                    "submission_uuid": "f19960cbe3b344a58f7728db53ce47f9",
+                    "idx": 13,
+                    "status": "no_automated_feedback",
+                    "num_essential_automated_comments": 0,
+                    "num_actionable_automated_comments": 0,
+                    "num_non_actionable_automated_comments": 0,
+                    "num_celebratory_automated_comments": 0,
+                    "submission_method": "cli",
+                    "created_at": "2023-05-07T05:35:43Z",
+                    "tests_status": "passed",
+                    "is_published": true,
+                    "is_latest": true,
+                    "links": {
+                        "self": "https://exercism.org/tracks/rust/exercises/poker/iterations?idx=13",
+                        "automated_feedback": "https://exercism.org/api/v2/solutions/00c717b68e1b4213b316df82636f5e0f/iterations/e44cbc866b1d42e5b276fd2afabb8fe0/automated_feedback",
+                        "delete": "https://exercism.org/api/v2/solutions/00c717b68e1b4213b316df82636f5e0f/iterations/e44cbc866b1d42e5b276fd2afabb8fe0",
+                        "solution": "https://exercism.org/tracks/rust/exercises/poker",
+                        "test_run": "https://exercism.org/api/v2/solutions/00c717b68e1b4213b316df82636f5e0f/submissions/f19960cbe3b344a58f7728db53ce47f9/test_run",
+                        "files": "https://exercism.org/api/v2/solutions/00c717b68e1b4213b316df82636f5e0f/submissions/f19960cbe3b344a58f7728db53ce47f9/files"
+                    }
+                }"#;
+
+                let mut iteration: Iteration = serde_json::from_str(json).unwrap();
+                if let Some(status) = status {
+                    iteration.status = status;
+                }
+                if let Some(is_published) = is_published {
+                    iteration.is_published = is_published;
+                }
+                iteration
+            }
+
+            fn get_args(status: Option<SolutionStatus>) -> BackupArgs {
+                BackupArgs {
+                    path: PathBuf::default(),
+                    token: None,
+                    track: vec![],
+                    exercise: vec![],
+                    status: status.unwrap_or(SolutionStatus::Any),
+                    overwrite: OverwritePolicy::IfNewer,
+                    iterations_sync_policy: IterationsSyncPolicy::FullSync,
+                    dry_run: false,
+                    max_downloads: 4,
+                }
+            }
+
+            fn perform_test(
+                status: Option<SolutionStatus>,
+                iteration_status: Option<iteration::Status>,
+                iteration_is_published: Option<bool>,
+                should_match: bool,
+            ) {
+                let args = get_args(status);
+                let iteration = get_iteration(iteration_status, iteration_is_published);
+                assert_eq!(should_match, args.iteration_matches(&iteration));
+            }
+
+            #[test]
+            fn test_iteration_status() {
+                perform_test(None, Some(iteration::Status::Untested), None, true);
+                perform_test(None, Some(iteration::Status::Testing), None, true);
+                perform_test(None, Some(iteration::Status::TestsFailed), None, true);
+                perform_test(None, Some(iteration::Status::Analyzing), None, true);
+                perform_test(None, Some(iteration::Status::EssentialAutomatedFeedback), None, true);
+                perform_test(
+                    None,
+                    Some(iteration::Status::ActionableAutomatedFeedback),
+                    None,
+                    true,
+                );
+                perform_test(
+                    None,
+                    Some(iteration::Status::CelebratoryAutomatedFeedback),
+                    None,
+                    true,
+                );
+                perform_test(
+                    None,
+                    Some(iteration::Status::NonActionableAutomatedFeedback),
+                    None,
+                    true,
+                );
+                perform_test(None, Some(iteration::Status::NoAutomatedFeedback), None, true);
+                perform_test(None, Some(iteration::Status::Deleted), None, false);
+            }
+
+            #[test]
+            fn test_iteration_is_published() {
+                perform_test(Some(SolutionStatus::Any), None, Some(true), true);
+                perform_test(Some(SolutionStatus::Submitted), None, Some(true), true);
+                perform_test(Some(SolutionStatus::Completed), None, Some(true), true);
+                perform_test(Some(SolutionStatus::Published), None, Some(true), true);
+
+                perform_test(Some(SolutionStatus::Any), None, Some(false), true);
+                perform_test(Some(SolutionStatus::Submitted), None, Some(false), true);
+                perform_test(Some(SolutionStatus::Completed), None, Some(false), true);
+                perform_test(Some(SolutionStatus::Published), None, Some(false), false);
             }
         }
     }
