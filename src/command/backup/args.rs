@@ -26,7 +26,7 @@ pub struct BackupArgs {
     pub exercise: Vec<String>,
 
     /// Only download solutions with the given status (or greater)
-    #[arg(short, long, value_enum, default_value_t = SolutionStatus::Submitted)]
+    #[arg(short, long, value_enum, default_value_t = SolutionStatus::Any)]
     pub status: SolutionStatus,
 
     /// How to handle solutions that already exist on disk
@@ -83,6 +83,7 @@ impl BackupArgs {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum SolutionStatus {
     /// Do not filter solutions based on their status
+    #[value(alias = "started")]
     Any,
 
     /// At least one iteration has been submitted, but exercise has not been marked as complete
@@ -116,6 +117,7 @@ pub enum OverwritePolicy {
     Always,
 
     /// Overwrite existing solutions if there is a newer version
+    #[value(alias = "if-new")]
     IfNewer,
 
     /// Never overwrite existing solutions
@@ -126,12 +128,14 @@ pub enum OverwritePolicy {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
 pub enum IterationsSyncPolicy {
     /// Do not back up iterations
+    #[value(alias = "no")]
     DoNotSync,
 
     /// Back up new iterations, do not touch existing iterations on disk
     New,
 
     /// Back up new iterations and remove existing iterations on disk that no longer exist
+    #[value(aliases = ["f", "full"])]
     FullSync,
 
     /// Remove existing iterations on disk
