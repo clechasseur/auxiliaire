@@ -44,16 +44,28 @@ Arguments:
   <PATH>  Path where to store the downloaded solutions
 
 Options:
-      --token <TOKEN>                  Exercism.org API token; if unspecified, CLI token will be used instead
-  -v, --verbose...                     Increase logging verbosity
-  -q, --quiet...                       Decrease logging verbosity
-  -t, --track <TRACK>                  Only download solutions in the given track(s) (can be used multiple times)
-  -e, --exercise <EXERCISE>            Only download solutions for the given exercise(s) (can be used multiple times)
-  -s, --status <STATUS>                Only download solutions with the given status (or greater) [default: submitted] [possible values: submitted, completed, published]
-  -o, --overwrite <OVERWRITE>          How to handle solutions that already exist on disk [default: if-newer] [possible values: always, if-newer, never]
-      --dry-run                        Determine what solutions to backup without downloading them
-  -m, --max-downloads <MAX_DOWNLOADS>  Maximum number of concurrent downloads [default: 4]
-  -h, --help                           Print help (see more with '--help')
+      --token <TOKEN>
+          Exercism.org API token; if unspecified, CLI token will be used instead
+  -v, --verbose...
+          Increase logging verbosity
+  -q, --quiet...
+          Decrease logging verbosity
+  -t, --track <TRACK>
+          Only download solutions in the given track(s) (can be used multiple times)
+  -e, --exercise <EXERCISE>
+          Only download solutions for the given exercise(s) (can be used multiple times)
+  -s, --status <STATUS>
+          Only download solutions with the given status (or greater) [default: any] [possible values: any, submitted, completed, published]
+  -o, --overwrite <OVERWRITE>
+          How to handle solutions that already exist on disk [default: if-newer] [possible values: always, if-newer, never]
+  -i, --iterations <ITERATIONS_SYNC_POLICY>
+          Whether to also back up iterations and how [default: do-not-sync] [possible values: do-not-sync, new, full-sync, clean-up]
+      --dry-run
+          Determine what solutions to back up without downloading them
+  -m, --max-downloads <MAX_DOWNLOADS>
+          Maximum number of concurrent downloads [default: 4]
+  -h, --help
+          Print help (see more with '--help')
 ```
 
 By default, using this command will download all submitted solutions, for all exercises, for all tracks.
@@ -61,11 +73,15 @@ It's possible to narrow the solutions to back up via the command-line arguments 
 
 When `auxiliaire` downloads a solution, it stores a backup state file in the solution folder in the `.auxiliaire` directory.
 This file is used to determine whether a solution has been updated with (a) new iteration(s).
-When this occurs, by default, `auxiliaire` will download the new version; this can be controlled via the `--overwrite` command-line argument.
+When this occurs, by default, `auxiliaire` will download the new version; this can be controlled via the `--overwrite` argument.
+
+It is also possible to download _every_ iteration of each solution via the `--iterations` argument.
+Iterations will be stored in a subdirectory called `_iterations`.
+All iterations submitted will be downloaded, unless `--status published` is used, in which case only published iterations will be kept.
 
 In order to communicate with the Exercism platform, `auxiliaire` needs an API token.
 By default, if the [Exercism CLI tool](https://exercism.org/docs/using/solving-exercises/working-locally) is installed, `auxiliaire` will reuse the API token configured for it.
-If the Exercism CLI is not installed, a valid API token will need to be passed to `auxiliaire` via the `--token` command-line argument.
+If the Exercism CLI is not installed, a valid API token will need to be passed to `auxiliaire` via the `--token` argument.
 This token can be found in the [Exercism Settings](https://exercism.org/settings/api_cli).
 
 ## Questions? Comments?
