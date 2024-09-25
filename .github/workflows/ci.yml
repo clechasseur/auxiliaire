@@ -19,10 +19,18 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install Rust with clippy
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
           toolchain: stable
           components: clippy
+          cache: false
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+        with:
+          prefix-key: v1-rust
+          key: all-features-${{ matrix.all-features }}
+          cache-on-failure: true
 
       - name: Run clippy
         uses: clechasseur/rs-clippy-check@a2a93bdcf05de7909aabd62eca762179ad3dbe50 # v3.0.5
@@ -37,7 +45,7 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install Rust nightly with rustfmt
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
           toolchain: nightly
           components: rustfmt
@@ -61,30 +69,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
-      - name: Install Rust nightly toolchain
-        if: ${{ matrix.toolchain != 'nightly' }}
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+      - name: Install Rust nightly and ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
-          toolchain: nightly
-          cache: false
-
-      - name: Install Rust toolchain ${{ matrix.toolchain }}
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
-        with:
-          toolchain: ${{ matrix.toolchain }}
+          toolchain: nightly,${{ matrix.toolchain }}
           cache: false
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
         with:
-          prefix-key: v6-rust
+          prefix-key: v7-rust
           key: all-features-${{ matrix.all-features }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
           cache-on-failure: true
 
       - name: Install required tools
         uses: taiki-e/install-action@ae888b48c8777229768754549e5463ba726cb1b3 # v2.44.1
         with:
-          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv-prep
+          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv,cargo-msrv-prep
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -119,8 +120,8 @@ jobs:
         if: ${{ matrix.ignore-lock }}
         run: rm Cargo.lock
 
-      - name: Install Rust toolchain ${{ matrix.toolchain }}
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+      - name: Install Rust ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
           toolchain: ${{ matrix.toolchain }}
           cache: false
@@ -154,7 +155,7 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
           toolchain: stable
           cache: false
@@ -208,8 +209,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
-      - name: Install Rust toolchain ${{ matrix.toolchain }}
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+      - name: Install Rust ${{ matrix.toolchain }}
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
           toolchain: ${{ matrix.toolchain }}
           cache: false
@@ -240,7 +241,7 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@1fbea72663f6d4c03efaab13560c8a24cfd2a7cc # v1.9.0
+        uses: actions-rust-lang/setup-rust-toolchain@4d1965c9142484e48d40c19de54b5cba84953a06 # v1.10.0
         with:
           toolchain: stable
           cache: false
