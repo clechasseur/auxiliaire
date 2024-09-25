@@ -17,8 +17,6 @@ jobs:
         uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
 
       - name: Run security audit
-        # Note: the action below is a temporary fork of rustsec/audit-check; it could be
-        # replaced if, at some point, rustsec/audit-check is updated to use Node 20.
-        uses: clechasseur/rustsec-audit-check@b5ade62a8d38826bb50ca4b8b9bc2a8a97f0d44d
+        uses: rustsec/audit-check@69366f33c96575abad1ee0dba8212993eecbe998 # v2.0.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
