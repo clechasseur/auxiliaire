@@ -13,13 +13,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context};
-use futures::StreamExt;
 use itertools::Itertools;
 use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
 use mini_exercism::api::v2::{solution, solutions};
 use mini_exercism::cli::get_cli_credentials;
 use mini_exercism::core::Credentials;
+use mini_exercism::stream::StreamExt;
 use mini_exercism::{api, http};
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::{fs, spawn};

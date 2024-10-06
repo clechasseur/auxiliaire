@@ -145,7 +145,6 @@ dependencies = [
  "assert_matches",
  "clap",
  "clap-verbosity-flag",
- "futures",
  "itertools",
  "mini_exercism",
  "serde",
