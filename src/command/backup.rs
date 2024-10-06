@@ -231,6 +231,12 @@ impl BackupCommand {
             debug!("Iterations to back up: {}", iteration_ops.iterations_to_backup.len());
         }
 
+        if !needs_backup && iteration_ops.is_empty() {
+            // No need to log something here, user has already been notified that we're
+            // skipping this solution in `solution_needs_backup`.
+            return Ok(());
+        }
+
         if !this.args.dry_run {
             this.create_solution_directories(
                 needs_backup,
@@ -786,6 +792,13 @@ impl BackupCommand {
             }
         }
         ops.existing_iterations_to_clean_up.extend(existing_it);
+
+        // Existing iterations are fetched even if we don't want to clean them up, because
+        // we need them to compute which iterations are new. However, if we don't want to
+        // clean them up, remove them here.
+        if !self.args.iterations_sync_policy.clean_up_old() {
+            ops.existing_iterations_to_clean_up.clear();
+        }
 
         ops
     }
