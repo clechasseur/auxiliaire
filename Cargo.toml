@@ -22,7 +22,7 @@ include = [ "src/**/*", "tests/**/*", "Cargo.lock", "Cargo.toml", "LICENSE", "RE
 anyhow = "1.0.89"
 clap = { version = "4.5.18", features = ["derive"] }
 clap-verbosity-flag = "2.2.1"
-futures = "0.3.30"
+futures = "0.3.31"
 itertools = "0.13.0"
 mini_exercism = { version = "4.1.0", features = ["cli", "cookies"] }
 serde = { version = "1.0.210", features = ["derive"] }
