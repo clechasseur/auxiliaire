@@ -33,7 +33,7 @@ jobs:
           cache-on-failure: true
 
       - name: Run clippy
-        uses: clechasseur/rs-clippy-check@a2a93bdcf05de7909aabd62eca762179ad3dbe50 # v3.0.5
+        uses: clechasseur/rs-clippy-check@50a0fd6f2f1a33307d603ee50d91eadbb2561120 # v3.0.6
         with:
           args: --workspace --all-targets ${{ matrix.all-features && '--all-features' || '' }} -- -D warnings
 
