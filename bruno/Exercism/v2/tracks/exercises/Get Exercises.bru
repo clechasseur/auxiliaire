@@ -1,0 +1,15 @@
+meta {
+  name: Get Exercises
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{v2_api_base_url}}/tracks/{{track_slug}}/exercises?sideload=solutions
+  body: none
+  auth: inherit
+}
+
+params:query {
+  sideload: solutions
+}
