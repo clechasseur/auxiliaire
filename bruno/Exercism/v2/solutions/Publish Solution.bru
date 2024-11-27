@@ -1,0 +1,11 @@
+meta {
+  name: Publish Solution
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{v2_api_base_url}}/solutions/{{solution_id}}/publish
+  body: none
+  auth: inherit
+}
