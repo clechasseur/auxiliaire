@@ -19,7 +19,7 @@ categories = [ "command-line-utilities" ]
 include = [ "src/**/*", "tests/**/*", "Cargo.lock", "Cargo.toml", "LICENSE", "README.md" ]
 
 [dependencies]
-anyhow = "1.0.93"
+anyhow = "1.0.94"
 clap = { version = "4.5.21", features = ["derive"] }
 clap-verbosity-flag = "3.0.1"
 itertools = "0.13.0"
