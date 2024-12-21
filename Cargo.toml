@@ -3,7 +3,6 @@ name = "auxiliaire"
 version = "0.2.2"
 authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]
 edition = "2021"
-rust-version = "1.74.1"
 
 readme = "README.md"
 license = "MIT"
@@ -32,8 +31,6 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 
 [dev-dependencies]
 assert_cmd = "2.0.16"
-# TODO re-enable if we need it, otherwise remove it
-#assert_fs = "1.1.1"
 assert_matches = "1.5.0"
 test-log = "0.2.16"
 wiremock = "0.6.2"
