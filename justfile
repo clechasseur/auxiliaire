@@ -17,11 +17,18 @@ message_format_flag := if message_format != "" { "--message-format " + message_f
 target_tuple := ""
 target_tuple_flag := if target_tuple != "" { "--target " + target_tuple } else { "" }
 
+release := "false"
+release_flag := if release == "true" { "--release" } else { "" }
+
 cargo_tarpaulin := cargo + " tarpaulin"
 
 [private]
 default:
     @just --list
+
+# Run main executable
+run *extra_args:
+    {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
 
 # Run clippy and rustfmt on workspace files
 tidy: clippy fmt
@@ -36,15 +43,15 @@ fmt:
 
 # Run `cargo check` on workspace
 check *extra_args:
-    {{cargo}} check --workspace {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}}
+    {{cargo}} check --workspace {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo build` on workspace
 build *extra_args:
-    {{cargo}} build --workspace {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}}
+    {{cargo}} build --workspace {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo test` on workspace
 test *extra_args:
-    {{cargo}} test --workspace {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}}
+    {{cargo}} test --workspace {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo update` to update dependencies in Cargo.lock
 update *extra_args:
@@ -88,11 +95,11 @@ _check-minimal-only: (_rimraf "target-minimal")
 
 # Run `cargo msrv` with `cargo minimal-versions check`
 msrv-minimal: (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (_rimraf "target-minimal") (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
-    {{cargo}} msrv -- just all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only
+    {{cargo}} msrv find -- just all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only
 
 # Run `cargo msrv` with `cargo check`
-msrv *extra_args: && (_rimraf "target-msrv")
-    {{cargo}} msrv -- just all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
+msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (_rimraf "target-msrv") (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
+    {{cargo}} msrv find -- just all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
 
 _msrv-check *extra_args: (_rimraf "target-msrv")
     just all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target-msrv {{extra_args}}
@@ -121,8 +128,3 @@ unprep *extra_args:
 [windows]
 @_rimraf-it target_dir:
     Remove-Item "{{target_dir}}" -Recurse
-
-# ----- Project-specific -----
-
-run *extra_args:
-    {{cargo}} run -- {{extra_args}}
