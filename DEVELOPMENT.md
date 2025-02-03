@@ -19,7 +19,7 @@ In order to run `rustfmt`, you will need a Nightly Rust toolset. If you do not h
 rustup toolchain install nightly
 ```
 
-If you already have one installed but it was too old, it was probably updated earlier when you ran `rustup update` 😉
+If you already have one installed, but it was too old, it was probably updated earlier when you ran `rustup update` 😉
 
 ### Just
 
@@ -76,13 +76,13 @@ Required checks will not pass if either of those report issues.
 
 ### Code coverage
 
-This project's [code coverage settings](codecov.yml) are pretty stringent and require **100% coverage** (_NDLR: ...or will someday_). To validate this locally, you can run
+To run all tests with code coverage, you can use
 
 ```bash
 just tarpaulin
 ```
 
-Make sure coverage is at the required level before submitting a PR.
+Make sure coverage is at an acceptable level before submitting a PR.
 
 ## Questions?
 
