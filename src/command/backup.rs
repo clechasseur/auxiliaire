@@ -8,6 +8,7 @@ mod state;
 
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::io;
 use std::panic::resume_unwind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -261,10 +262,10 @@ impl BackupCommand {
                 }
             }
 
-            if !iteration_ops.is_empty() {
-                let mut iterations_output_path = output_path.clone();
-                iterations_output_path.push(&this.iterations_dir_name);
+            let mut iterations_output_path = output_path.clone();
+            iterations_output_path.push(&this.iterations_dir_name);
 
+            if !iteration_ops.is_empty() {
                 for existing_iteration in iteration_ops.existing_iterations_to_clean_up {
                     task_pool.spawn(Self::remove_one_existing_iteration(
                         Arc::clone(&this),
@@ -291,6 +292,22 @@ impl BackupCommand {
                     )
                 })
                 .await?;
+
+            // If we removed all iterations from the iterations directory, we should
+            // delete it. The easiest way is to try to delete it and if it's not empty,
+            // simply skip and move on.
+            match fs::remove_dir(&iterations_output_path).await {
+                Ok(()) => (),
+                Err(err) if err.kind() == io::ErrorKind::DirectoryNotEmpty => (),
+                err => {
+                    return err.with_context(|| {
+                        format!(
+                            "error removing empty iterations directory for {}/{}",
+                            solution.track.name, solution.exercise.name
+                        )
+                    })
+                },
+            }
         }
 
         if !this.args.dry_run {
@@ -349,15 +366,20 @@ impl BackupCommand {
         trace!(destination_path = %destination_path.display());
 
         if !this.args.dry_run {
+            let context = || {
+                format!(
+                    "failed to remove existing iteration {} of solution to {}/{}",
+                    iteration, solution.track.name, solution.exercise.name,
+                )
+            };
+
             let _permit = this.limiter.get_permit().await;
-            this.remove_directory(&destination_path)
+            this.remove_directory_content(&destination_path)
                 .await
-                .with_context(|| {
-                    format!(
-                        "failed to remove existing iteration {} of solution to {}/{}",
-                        iteration, solution.track.name, solution.exercise.name,
-                    )
-                })?;
+                .with_context(context)?;
+            fs::remove_dir(&destination_path)
+                .await
+                .with_context(context)?;
         }
 
         debug!(
@@ -640,7 +662,7 @@ impl BackupCommand {
     ) -> Result<()> {
         if needs_backup {
             if solution_exists {
-                self.remove_directory(solution_output_path)
+                self.remove_directory_content(solution_output_path)
                     .await
                     .with_context(|| {
                         format!(
@@ -822,7 +844,7 @@ impl BackupCommand {
     }
 
     #[instrument(level = "trace", skip(self))]
-    async fn remove_directory(&self, dir_path: &Path) -> Result<()> {
+    async fn remove_directory_content(&self, dir_path: &Path) -> Result<()> {
         if !self.args.dry_run {
             let mut dir_content = fs::read_dir(dir_path).await?;
 
