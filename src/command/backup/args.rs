@@ -75,7 +75,7 @@ impl BackupArgs {
     }
 
     fn solution_status_matches(&self, solution_status: Option<SolutionStatus>) -> bool {
-        solution_status.map_or(false, |st| st >= self.status)
+        solution_status.is_some_and(|st| st >= self.status)
     }
 }
 
