@@ -61,7 +61,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.74.1 ]
+        toolchain: [ 1.83.0 ]
         os: [ ubuntu, macos, windows ]
         all-features: [ false ]
     runs-on: ${{ matrix.os }}-latest
@@ -97,7 +97,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.75.0, stable, beta, nightly ]
+        toolchain: [ 1.83.0, stable, beta, nightly ]
         os: [ ubuntu, macos, windows ]
         ignore-lock: [ false, true ]
         all-features: [ false ]
@@ -108,7 +108,7 @@ jobs:
           - toolchain: nightly
             experimental: true
         exclude:
-          - toolchain: 1.75.0
+          - toolchain: 1.83.0
             ignore-lock: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
