@@ -175,7 +175,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run cargo-tarpaulin
-        uses: clechasseur/rs-cargo@ba1183726db57e8b66e56422873fa24244772da3 # v3.0.1
+        uses: clechasseur/rs-cargo@319e211e9459c5e531afb6d157296765b441572e # v3.0.3
         with:
           command: tarpaulin
 
@@ -254,7 +254,7 @@ jobs:
           cache-on-failure: true
 
       - name: Perform publish dry-run
-        uses: clechasseur/rs-cargo@ba1183726db57e8b66e56422873fa24244772da3 # v3.0.1
+        uses: clechasseur/rs-cargo@319e211e9459c5e531afb6d157296765b441572e # v3.0.3
         with:
           command: publish
           args: --dry-run
