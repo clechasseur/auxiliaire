@@ -2,18 +2,16 @@ name: CI
 
 on:
   push:
+  workflow_dispatch:
 
 env:
+  CARGO_TERM_COLOR: always
   CI: 1
 
 jobs:
   clippy:
-    name: Clippy validation${{ matrix.all-features && ' with all features' || '' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        all-features: [ false ]
-    runs-on: ubuntu-latest
+    name: Clippy validation
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -26,20 +24,21 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
-          prefix-key: v1-rust
-          key: all-features-${{ matrix.all-features }}
+          prefix-key: v2-rust
           cache-on-failure: true
 
       - name: Run clippy
         uses: clechasseur/rs-clippy-check@23f6dcf86d7e4e0d98b000bba0bb81ac587c44aa # v4.0.2
         with:
-          args: --workspace --all-targets ${{ matrix.all-features && '--all-features' || '' }} -- -D warnings
+          args: --workspace --all-targets --feature-powerset -- -D warnings
+          tool: cargo-hack
+          cache-key: v1-clippy
 
   fmt:
     name: Rustfmt check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -57,14 +56,13 @@ jobs:
           args: --all
 
   msrv-check:
-    name: MSRV check for Rust ${{ matrix.toolchain }} on ${{ matrix.os }}${{ matrix.all-features && ' with all features' || '' }}
+    name: MSRV check for Rust ${{ matrix.toolchain }} on ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ ubuntu-24.04, macos-14, windows-2022 ]
         toolchain: [ 1.83.0 ]
-        os: [ ubuntu, macos, windows ]
-        all-features: [ false ]
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -76,31 +74,30 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
-          prefix-key: v7-rust
-          key: all-features-${{ matrix.all-features }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
+          prefix-key: v10-rust
+          key: msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
           cache-on-failure: true
 
       - name: Install required tools
-        uses: taiki-e/install-action@3c8fc6eaa5fcff049bb133c1f540c6c2287a191f # v2.49.10
+        uses: taiki-e/install-action@f1390fd0d8205ae79e5e57b1d1e300dceeb4163e # v2.49.44
         with:
-          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv,cargo-msrv-prep
+          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv-prep
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run checks using cargo-minimal-versions
-        run: just all_features=${{ matrix.all-features }} check-minimal
+        run: just toolchain=${{ matrix.toolchain }} check-minimal
 
   build:
-    name: Build for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }} on ${{ matrix.os }}${{ matrix.ignore-lock && ' without Cargo.lock' || '' }}${{ matrix.all-features && ' with all features' || '' }}
+    name: Build for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }} on ${{ matrix.os }}${{ matrix.ignore-lock && ' without Cargo.lock' || '' }}
     strategy:
       fail-fast: false
       matrix:
         toolchain: [ 1.83.0, stable, beta, nightly ]
-        os: [ ubuntu, macos, windows ]
+        os: [ ubuntu-24.04, macos-14, windows-2022 ]
         ignore-lock: [ false, true ]
-        all-features: [ false ]
         include:
           - experimental: false
           - toolchain: beta
@@ -110,7 +107,7 @@ jobs:
         exclude:
           - toolchain: 1.83.0
             ignore-lock: true
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
     steps:
       - name: Checkout code
@@ -128,70 +125,62 @@ jobs:
 
       - name: Rust Cache
         if: ${{ !matrix.experimental }}
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
-          prefix-key: v2-rust
-          key: ignore-lock-${{ matrix.ignore-lock }}-all-features-${{ matrix.all-features }}
+          prefix-key: v3-rust
+          key: ignore-lock-${{ matrix.ignore-lock }}
           cache-on-failure: true
 
-      - name: Install just
-        uses: taiki-e/install-action@3c8fc6eaa5fcff049bb133c1f540c6c2287a191f # v2.49.10
+      - name: Install required tools
+        uses: taiki-e/install-action@f1390fd0d8205ae79e5e57b1d1e300dceeb4163e # v2.49.44
         with:
-          tool: just
+          tool: just,cargo-hack
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run checks
-        run: just all_features=${{ matrix.all-features }} check
+      - name: Run checks on feature powerset
+        run: just check-powerset
 
       - name: Run tests
-        run: just all_features=${{ matrix.all-features }} test
+        run: just test
 
-  tarpaulin:
-    name: Code coverage
-    runs-on: ubuntu-latest
+  llvm-cov:
+    name: Code coverage with llvm-cov
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install Rust
+      - name: Install Rust nightly
         uses: actions-rust-lang/setup-rust-toolchain@9399c7bb15d4c7d47b27263d024f0a4978346ba4 # v1.11.0
         with:
-          toolchain: stable
+          toolchain: nightly
           cache: false
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
+      - name: Install required tools
+        uses: taiki-e/install-action@f1390fd0d8205ae79e5e57b1d1e300dceeb4163e # v2.49.44
         with:
-          prefix-key: v2-rust
-          cache-targets: false
-          cache-on-failure: true
-
-      - name: Install cargo-tarpaulin
-        uses: taiki-e/install-action@3c8fc6eaa5fcff049bb133c1f540c6c2287a191f # v2.49.10
-        with:
-          tool: cargo-tarpaulin
+          tool: just,cargo-llvm-cov
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run cargo-tarpaulin
-        uses: clechasseur/rs-cargo@319e211e9459c5e531afb6d157296765b441572e # v3.0.3
-        with:
-          command: tarpaulin
+      - name: Run cargo-llvm-cov
+        run: just llvm-cov
 
       - name: Upload code coverage results to codecov.io
         uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: codecov.json
           fail_ci_if_error: true
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: code-coverage-report
+          name: llvm-cov-code-coverage-report
           path: |
-            cobertura.xml
-            tarpaulin-report.html
+            codecov.json
+            target/llvm-cov/html/
 
   doc:
     name: Rustdoc check for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }}
@@ -203,7 +192,7 @@ jobs:
           - experimental: false
           - toolchain: nightly
             experimental: true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.experimental }}
     steps:
       - name: Checkout code
@@ -217,14 +206,14 @@ jobs:
 
       - name: Rust Cache
         if: ${{ !matrix.experimental }}
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
         with:
           prefix-key: v2-rust
           cache-targets: false
           cache-on-failure: true
 
       - name: Install just
-        uses: taiki-e/install-action@3c8fc6eaa5fcff049bb133c1f540c6c2287a191f # v2.49.10
+        uses: taiki-e/install-action@f1390fd0d8205ae79e5e57b1d1e300dceeb4163e # v2.49.44
         with:
           tool: just
         env:
@@ -232,29 +221,3 @@ jobs:
 
       - name: Generate doc using rustdoc
         run: just doc
-
-  publish-dry-run:
-    name: Publish dry-run
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@9399c7bb15d4c7d47b27263d024f0a4978346ba4 # v1.11.0
-        with:
-          toolchain: stable
-          cache: false
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
-        with:
-          prefix-key: v2-rust
-          cache-targets: false
-          cache-on-failure: true
-
-      - name: Perform publish dry-run
-        uses: clechasseur/rs-cargo@319e211e9459c5e531afb6d157296765b441572e # v3.0.3
-        with:
-          command: publish
-          args: --dry-run

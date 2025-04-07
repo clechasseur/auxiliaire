@@ -13,7 +13,7 @@ rustup update
 
 ### Rust nightly
 
-In order to run `rustfmt`, you will need a Nightly Rust toolset. If you do not have one installed, you can install one via `rustup` by running
+Certain tools require a Nightly Rust toolset. If you do not have one installed, you can install one via `rustup` by running
 
 ```bash
 rustup toolchain install nightly
@@ -28,7 +28,7 @@ If you already have one installed, but it was too old, it was probably updated e
 This project includes a [justfile](justfile) that makes it easier to run the various tools used for development. To install `just` via `cargo`, simply run
 
 ```bash
-cargo install just
+cargo install just --locked
 ```
 
 If you have [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), it'll probably be faster to use it instead:
@@ -39,17 +39,17 @@ cargo binstall just
 
 You can also install it via various [methods](https://github.com/casey/just#packages).
 
-### Tarpaulin
+### Llvm-cov
 
-If you want to run tests with coverage locally, you'll need to install [`cargo-tarpaulin`](https://github.com/xd009642/tarpaulin), a code coverage tool for Rust. You can install it via `cargo`:
+If you want to run tests with coverage locally, you'll need to install [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov), a code coverage tool for Rust. You can install it via `cargo`:
 
 ```bash
-cargo install cargo-tarpaulin
+cargo install cargo-llvm-cov --locked
 ```
 You can also install it via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall):
 
 ```bash
-cargo binstall cargo-tarpaulin
+cargo binstall cargo-llvm-cov
 ```
 
 ## Development
@@ -79,7 +79,7 @@ Required checks will not pass if either of those report issues.
 To run all tests with code coverage, you can use
 
 ```bash
-just tarpaulin
+just llvm-cov
 ```
 
 Make sure coverage is at an acceptable level before submitting a PR.

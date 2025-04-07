@@ -8,7 +8,7 @@ on:
 
 jobs:
   audit-check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       checks: write
       issues: write
