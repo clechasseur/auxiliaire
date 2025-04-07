@@ -7,6 +7,7 @@
 #![deny(rustdoc::missing_crate_level_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod command;
 pub mod error;
@@ -79,6 +80,7 @@ impl Cli {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
 

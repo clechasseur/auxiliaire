@@ -53,6 +53,7 @@ impl Display for MultiError {
 impl StdError for MultiError {}
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     mod multi_error {
         mod errors {

@@ -24,7 +24,7 @@ use mini_exercism::stream::StreamExt;
 use mini_exercism::{api, http};
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::{fs, spawn};
-use tracing::{debug, enabled, error, info, instrument, trace, warn, Level};
+use tracing::{debug, enabled, error, info, trace, warn, Level};
 
 use crate::command::backup::args::{BackupArgs, OverwritePolicy, SolutionStatus};
 use crate::command::backup::iterations::{
@@ -99,7 +99,7 @@ impl BackupCommand {
     /// Execute the backup operation.
     ///
     /// See [struct description](Self) for details on how to call this method.
-    #[instrument(skip_all)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip_all))]
     pub async fn execute(this: Arc<Self>) -> Result<()> {
         info!("Starting Exercism solutions backup to {}", this.args.path.display());
         trace!(?this.args);
@@ -121,7 +121,7 @@ impl BackupCommand {
         }
     }
 
-    #[instrument(skip_all)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip_all))]
     async fn backup_solutions(this: Arc<Self>, output_path: PathBuf) -> Result<()> {
         let mut task_pool = TaskPool::new();
 
@@ -172,7 +172,7 @@ impl BackupCommand {
             .await
     }
 
-    #[instrument(level = "debug", skip_all, fields(solution.track.name, solution.exercise.name))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "debug", skip_all, fields(solution.track.name, solution.exercise.name)))]
     async fn backup_solution(
         this: Arc<Self>,
         mut output_path: PathBuf,
@@ -320,7 +320,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, file))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, file)))]
     async fn backup_one_file(
         this: Arc<Self>,
         solution: Solution,
@@ -355,7 +355,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, iteration.index = iteration))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, iteration.index = iteration)))]
     async fn remove_one_existing_iteration(
         this: Arc<Self>,
         solution: Solution,
@@ -390,7 +390,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, iteration.index))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name, iteration.index)))]
     async fn backup_one_iteration(
         this: Arc<Self>,
         solution: Solution,
@@ -456,7 +456,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name)))]
     async fn save_backup_state(
         &self,
         solution: &Solution,
@@ -500,7 +500,7 @@ impl BackupCommand {
             })
     }
 
-    #[instrument(level = "trace", skip(self))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self)))]
     async fn create_output_directory(&self, output_path: &Path) -> Result<()> {
         if !self.args.dry_run {
             fs::create_dir_all(output_path).await?;
@@ -509,7 +509,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "debug", skip(self)))]
     async fn get_solutions_for_page(
         &self,
         page: i64,
@@ -531,7 +531,10 @@ impl BackupCommand {
         Ok((solutions, response.meta))
     }
 
-    #[instrument(level = "trace", skip_all, ret(level = "trace"))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip_all, ret(level = "trace"))
+    )]
     fn get_solutions_filters(&self) -> solutions::Filters {
         let mut builder = solutions::Filters::builder();
 
@@ -560,7 +563,7 @@ impl BackupCommand {
         builder.build()
     }
 
-    #[instrument(level = "trace", skip(self, solutions))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self, solutions)))]
     async fn create_track_directories(
         &self,
         output_path: &Path,
@@ -582,7 +585,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name)))]
     async fn get_solution_files(&self, solution: &Solution) -> Result<Vec<String>> {
         let _permit = self.limiter.get_permit().await;
         Ok(self
@@ -599,12 +602,12 @@ impl BackupCommand {
             .files)
     }
 
-    #[instrument(
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(
         level = "trace",
         skip(self, solution),
         fields(solution.track.name, solution.exercise.name),
         ret(level = "trace")
-    )]
+    ))]
     async fn solution_needs_backup(
         &self,
         solution: &Solution,
@@ -652,7 +655,7 @@ impl BackupCommand {
         Ok((needs_backup, solution_exists))
     }
 
-    #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name)))]
     async fn create_solution_directories(
         &self,
         needs_backup: bool,
@@ -703,7 +706,7 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip_all, fields(solution.track.name, solution.exercise.name)))]
     async fn get_matching_solution_iterations(
         &self,
         solution: &Solution,
@@ -733,7 +736,7 @@ impl BackupCommand {
             .collect_vec())
     }
 
-    #[instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self, solution), fields(solution.track.name, solution.exercise.name)))]
     async fn get_existing_iterations(
         &self,
         solution: &Solution,
@@ -792,7 +795,10 @@ impl BackupCommand {
         Ok(iterations)
     }
 
-    #[instrument(level = "trace", skip_all, ret(level = "trace"))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip_all, ret(level = "trace"))
+    )]
     fn get_iteration_sync_ops<M, E>(
         &self,
         matching_iterations: M,
@@ -825,7 +831,7 @@ impl BackupCommand {
         ops
     }
 
-    #[instrument(level = "trace", skip(self))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self)))]
     async fn create_file_parent_directory(&self, destination_path: &Path) -> Result<()> {
         match (self.args.dry_run, destination_path.parent()) {
             (false, Some(parent)) => fs::create_dir_all(parent).await.with_context(|| {
@@ -835,7 +841,10 @@ impl BackupCommand {
         }
     }
 
-    #[instrument(level = "trace", skip(self), ret(level = "trace"))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
+    )]
     async fn directory_exists(&self, dir_path: &Path) -> bool {
         fs::metadata(dir_path)
             .await
@@ -843,7 +852,7 @@ impl BackupCommand {
             .unwrap_or(false)
     }
 
-    #[instrument(level = "trace", skip(self))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", skip(self)))]
     async fn remove_directory_content(&self, dir_path: &Path) -> Result<()> {
         if !self.args.dry_run {
             let mut dir_content = fs::read_dir(dir_path).await?;
@@ -875,7 +884,10 @@ impl BackupCommand {
         Ok(())
     }
 
-    #[instrument(level = "trace", skip(self), ret(level = "trace"))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
+    )]
     fn should_skip_dir_entry(&self, entry_path: &Path) -> bool {
         entry_path
             .file_name()
@@ -885,7 +897,10 @@ impl BackupCommand {
             .unwrap_or(true)
     }
 
-    #[instrument(level = "trace", skip(self), ret(level = "trace"))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
+    )]
     fn has_iterations_dir_collision(&self, files: &[String]) -> bool {
         files.iter().any(|file| {
             file.starts_with(&self.iterations_dir_name)
