@@ -53,6 +53,7 @@ impl TaskPool {
 
 //noinspection DuplicatedCode
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use std::sync::Arc;
     use std::time::Duration;

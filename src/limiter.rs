@@ -19,6 +19,7 @@ impl Limiter {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     mod limiter {
         use std::sync::Arc;
