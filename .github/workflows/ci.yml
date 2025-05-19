@@ -30,7 +30,7 @@ jobs:
           cache-on-failure: true
 
       - name: Run clippy
-        uses: clechasseur/rs-clippy-check@23f6dcf86d7e4e0d98b000bba0bb81ac587c44aa # v4.0.2
+        uses: clechasseur/rs-clippy-check@24d66924f748522acf015e8642b7fb8cd81b4dbc # v4.0.3
         with:
           args: --workspace --all-targets --feature-powerset -- -D warnings
           tool: cargo-hack
