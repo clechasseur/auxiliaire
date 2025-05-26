@@ -41,6 +41,8 @@ force_prep_flag := if force_prep == "true" { "--force" } else { "" }
 
 just := "just all_features=" + all_features + " all_targets=" + all_targets + " message_format=" + message_format + " target_tuple=" + target_tuple + " release=" + release + " workspace=" + workspace + " package=" + package + " warnings_as_errors=" + warnings_as_errors + " force_prep=" + force_prep
 
+rustdoc_extra_flags := if toolchain == "nightly" { "--cfg docsrs" } else { "" }
+
 skip_test_reqs_value := "running"
 
 [private]
@@ -72,7 +74,7 @@ tidy: clippy fmt
 
 # Run `cargo hack clippy` for the feature powerset
 clippy *extra_args:
-    {{cargo_hack}} clippy {{package_flag}} {{all_targets_flag}} {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
+    {{cargo_hack}} clippy --target-dir target/clippy-target {{package_flag}} {{all_targets_flag}} {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
 
 # Run rustfmt
 fmt *extra_args:
@@ -84,7 +86,7 @@ check *extra_args:
 
 # Run `cargo hack check` for the feature powerset
 check-powerset *extra_args:
-    {{cargo_hack}} check {{package_flag}} --no-dev-deps --lib --bins {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo_hack}} check --target-dir target/check-powerset-target {{package_flag}} --no-dev-deps --lib --bins {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo build`
 build *extra_args:
@@ -116,7 +118,7 @@ update *extra_args:
 # Generate documentation with rustdoc
 doc: _doc
 
-_doc $RUSTDOCFLAGS="-D warnings":
+_doc $RUSTDOCFLAGS=("-D warnings " + rustdoc_extra_flags):
     {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{package_flag}} {{all_features_flag}} {{message_format_flag}}
 
 # Check doc coverage with Nightly rustdoc

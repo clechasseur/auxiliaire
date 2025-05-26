@@ -46,6 +46,7 @@ If you want to run tests with coverage locally, you'll need to install [`cargo-l
 ```bash
 cargo install cargo-llvm-cov --locked
 ```
+
 You can also install it via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall):
 
 ```bash
