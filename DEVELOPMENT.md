@@ -4,7 +4,7 @@ This guide is meant for people wishing to contribute to this open-source project
 
 ### Rust
 
-You need at least **Rust 1.83.0** to build this project's code and run the tests. You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
+You need a Rust toolchain to build this project's code and run the tests. You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
 If you already have a version of Rust installed via `rustup` but it's too old, you can update by running
 
 ```bash
