@@ -139,11 +139,11 @@ _check-minimal-only: (_rimraf "target/check-minimal-target")
     {{cargo}} minimal-versions check --target-dir target/check-minimal-target {{package_flag}} --lib --bins {{all_features_flag}} {{message_format_flag}}
 
 # Run `cargo msrv` with `cargo minimal-versions check`
-msrv-minimal: (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
+msrv: (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
     {{cargo}} msrv find -- {{just}} _check-minimal-only
 
 # Run `cargo msrv` with `cargo check`
-msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
+msrv-full *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
     {{cargo}} msrv find -- {{just}} _msrv-check {{extra_args}}
 
 _msrv-check *extra_args: (_rimraf "target/msrv-target") (check "--target-dir target/msrv-target" extra_args)
@@ -174,6 +174,6 @@ unprep *extra_args:
 @_rimraf-it target_dir:
     Remove-Item "{{target_dir}}" -Recurse
 
-# Prints state of docker container to stdout
+# Prints state of a docker container to stdout
 @_check-container-state name:
     docker container ls --filter "name={{name}}" --format "{{{{.State}}"

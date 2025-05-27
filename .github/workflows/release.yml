@@ -13,24 +13,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [ aarch64, x86_64, universal ]
+        arch: [ aarch64, x86_64 ]
         platform: [ unknown-linux-gnu, apple-darwin, pc-windows-msvc ]
         include:
-          - os: ubuntu-latest
+          - arch: universal
+            platform: apple-darwin
+          - os: ubuntu-24.04
           - platform: apple-darwin
-            os: macos-latest
+            os: macos-14
           - platform: pc-windows-msvc
-            os: windows-latest
+            os: windows-2022
           - crt-static: false
           - platform: pc-windows-msvc
             crt-static: true
         exclude:
           - arch: aarch64
             platform: unknown-linux-gnu
-          - arch: universal
-            platform: unknown-linux-gnu
-          - arch: universal
-            platform: pc-windows-msvc
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
