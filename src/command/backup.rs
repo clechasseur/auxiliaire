@@ -535,7 +535,7 @@ impl BackupCommand {
         not(coverage_nightly),
         tracing::instrument(level = "trace", skip_all, ret(level = "trace"))
     )]
-    fn get_solutions_filters(&self) -> solutions::Filters {
+    fn get_solutions_filters(&self) -> solutions::Filters<'_> {
         let mut builder = solutions::Filters::builder();
 
         // These are more optimizations - it works even if we don't specify them since the
