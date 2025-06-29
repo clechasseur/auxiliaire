@@ -111,7 +111,7 @@ mod tests {
             let limiter = limiter.clone();
             task_pool.spawn(async move {
                 let _permit = limiter.get_permit();
-                let result = get(format!("{}/", uri)).await;
+                let result = get(format!("{uri}/")).await;
                 assert_matches!(result, Ok(response) if response.status().is_success());
                 Ok(())
             });
@@ -131,7 +131,7 @@ mod tests {
             let limiter = limiter.clone();
             task_pool.spawn(async move {
                 let _permit = limiter.get_permit();
-                let result = get(format!("{}/", uri)).await;
+                let result = get(format!("{uri}/")).await;
                 assert_matches!(result, Ok(response) if response.status().is_success());
                 Ok(())
             });
@@ -151,7 +151,7 @@ mod tests {
             let limiter = limiter.clone();
             task_pool.spawn(async move {
                 let _permit = limiter.get_permit();
-                get(if i % 2 == 0 { format!("{}/", uri) } else { format!("{}/doesnotexist", uri) })
+                get(if i % 2 == 0 { format!("{uri}/") } else { format!("{uri}/doesnotexist") })
                     .await
                     .with_context(|| "download error")?
                     .error_for_status()
