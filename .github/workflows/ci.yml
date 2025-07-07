@@ -33,7 +33,7 @@ jobs:
           cache-on-failure: true
 
       - name: Run clippy
-        uses: clechasseur/rs-clippy-check@24d66924f748522acf015e8642b7fb8cd81b4dbc # v4.0.3
+        uses: clechasseur/rs-clippy-check@9ef202cdf5c9672a6d795dbb5309f6b62c4ab908 # v4.0.4
         with:
           args: --workspace --all-targets --feature-powerset -- -D warnings
           tool: cargo-hack
@@ -54,7 +54,7 @@ jobs:
           cache: false
 
       - name: Run Rustfmt
-        uses: clechasseur/rs-fmt-check@79f30e1d92a7a4fbc417d377ef8172e445f58555 # v2.0.9
+        uses: clechasseur/rs-fmt-check@946ff7ba705ba6b0b5101309ab693c96fd452e25 # v2.0.10
         with:
           args: --all
 
