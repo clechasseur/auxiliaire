@@ -23,7 +23,7 @@ level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
 [dependencies]
-anyhow = "1.0.99"
+anyhow = "1.0.100"
 clap = { version = "4.5.46", features = ["derive"] }
 clap-verbosity-flag = "3.0.4"
 itertools = "0.14.0"
