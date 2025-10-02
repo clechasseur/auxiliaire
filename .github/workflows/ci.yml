@@ -20,20 +20,20 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install Rust with clippy
-        uses: actions-rust-lang/setup-rust-toolchain@ac90e63697ac2784f4ecfe2964e1a285c304003a # v1.14.1
+        uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8 # v1.15.1
         with:
           toolchain: stable
           components: clippy
           cache: false
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
         with:
           prefix-key: v2-rust
           cache-on-failure: true
 
       - name: Run clippy
-        uses: clechasseur/rs-clippy-check@ff884e6d84447e8bb55fa0a6510e058e0c40be19 # v4.0.5
+        uses: clechasseur/rs-clippy-check@69da786488ddcceb16285b0219841750089369ba # v5.0.1
         with:
           args: --workspace --all-targets --feature-powerset -- -D warnings
           tool: cargo-hack
@@ -47,14 +47,14 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install Rust nightly with rustfmt
-        uses: actions-rust-lang/setup-rust-toolchain@ac90e63697ac2784f4ecfe2964e1a285c304003a # v1.14.1
+        uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8 # v1.15.1
         with:
           toolchain: nightly
           components: rustfmt
           cache: false
 
       - name: Run Rustfmt
-        uses: clechasseur/rs-fmt-check@b821b41cc907be559e0596ec6cf657ed627268cc # v2.0.11
+        uses: clechasseur/rs-fmt-check@37e549d599544309c163b37650fe7cfee67390c4 # v3.0.0
         with:
           args: --all
 
@@ -64,20 +64,20 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
-        toolchain: [ 1.83.0 ]
+        toolchain: [ 1.85.1 ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install Rust nightly and ${{ matrix.toolchain }}
-        uses: actions-rust-lang/setup-rust-toolchain@ac90e63697ac2784f4ecfe2964e1a285c304003a # v1.14.1
+        uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8 # v1.15.1
         with:
           toolchain: nightly,${{ matrix.toolchain }}
           cache: false
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
         with:
           prefix-key: v10-rust
           key: msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
@@ -105,13 +105,13 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@ac90e63697ac2784f4ecfe2964e1a285c304003a # v1.14.1
+        uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8 # v1.15.1
         with:
           toolchain: stable
           cache: false
 
       - name: Rust Cache
-        uses: Swatinem/rust-cache@98c8021b550208e191a6a3145459bfc9fb29c4c0 # v2.8.0
+        uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
         with:
           prefix-key: v4-rust
           cache-on-failure: true
@@ -137,7 +137,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install Rust nightly
-        uses: actions-rust-lang/setup-rust-toolchain@ac90e63697ac2784f4ecfe2964e1a285c304003a # v1.14.1
+        uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8 # v1.15.1
         with:
           toolchain: nightly
           cache: false
@@ -175,7 +175,7 @@ jobs:
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: Install Rust nightly
-        uses: actions-rust-lang/setup-rust-toolchain@ac90e63697ac2784f4ecfe2964e1a285c304003a # v1.14.1
+        uses: actions-rust-lang/setup-rust-toolchain@02be93da58aa71fb456aa9c43b301149248829d8 # v1.15.1
         with:
           toolchain: nightly
           cache: false
