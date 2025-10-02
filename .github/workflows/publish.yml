@@ -27,6 +27,6 @@ jobs:
           cache-on-failure: true
 
       - name: Publish package
-        uses: clechasseur/rs-cargo@fcbdfb72a23f37024eb01c018b6d723c6a799d19 # v3.0.6
+        uses: clechasseur/rs-cargo@bbcc0f43bb19de578aed0eaf1211970155d0fbcd # v4.0.0
         with:
           command: publish
