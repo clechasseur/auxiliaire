@@ -119,7 +119,7 @@ update *extra_args:
 doc: _doc
 
 _doc $RUSTDOCFLAGS=("-D warnings " + rustdoc_extra_flags):
-    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{package_flag}} {{all_features_flag}} {{message_format_flag}}
+    {{cargo}} doc {{ if env('CI', '') == '' { '--open' } else { '' } }} {{ if toolchain == 'nightly' { '--no-deps' } else { '' } }} {{package_flag}} {{all_features_flag}} {{message_format_flag}}
 
 # Check doc coverage with Nightly rustdoc
 doc-coverage: _doc-coverage

@@ -188,4 +188,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Generate doc using rustdoc
-        run: just doc
+        run: just toolchain=nightly doc
