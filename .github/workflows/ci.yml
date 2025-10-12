@@ -64,7 +64,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
-        toolchain: [ 1.85.1 ]
+        toolchain: [ 1.88.0 ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
