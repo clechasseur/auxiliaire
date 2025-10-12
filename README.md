@@ -14,7 +14,7 @@ For more information, see [its about page](https://exercism.org/about).
 
 Installing and using `auxiliaire` can be done simply by downloading the executable appropriate for your platform from the [project's Releases page](https://github.com/clechasseur/auxiliaire/releases) and saving it to a location in your PATH.
 
-If you have Rust **1.85.1** or greater installed, you can also compile and install `auxiliaire` from source via `cargo`:
+If you have Rust **1.88.0** or greater installed, you can also compile and install `auxiliaire` from source via `cargo`:
 
 ```sh
 cargo install auxiliaire --locked
