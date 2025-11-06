@@ -1109,9 +1109,9 @@ checksum = "6877bb514081ee2a7ff5ef9de3281f14a4dd4bceac4c09388074a6b5df8a139a"
 
 [[package]]
 name = "mini_exercism"
-version = "7.0.0"
+version = "7.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1031f3f8c2714d49ca17ba12eb6ee831f345732241a84b6355870c151ed35552"
+checksum = "cdf1ba5f40fea60c0dcba7e5cb2fc68b2afca0f5d35a43ee8d68f1450fb262d3"
 dependencies = [
  "anyhow",
  "bytes",
@@ -1121,12 +1121,11 @@ dependencies = [
  "paste",
  "reessaie",
  "reqwest",
- "reqwest-middleware",
- "reqwest-retry",
  "serde",
  "serde_json",
  "strum",
  "thiserror 2.0.17",
+ "tracing",
 ]
 
 [[package]]
@@ -1530,9 +1529,9 @@ dependencies = [
 
 [[package]]
 name = "reessaie"
-version = "1.0.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc22a8ab9867c9e664ac7d5358c8271672b5f63dd16724b2a11329dfe5b6415b"
+checksum = "bbea146e87e5b859f8784179732013aaea5dc163a505467ffe5c832daa651cb7"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1541,6 +1540,7 @@ dependencies = [
  "reqwest-middleware",
  "reqwest-retry",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1574,9 +1574,9 @@ checksum = "caf4aa5b0f434c91fe5c7f1ecb6a5ece2130b02ad2a590589dda5146df959001"
 
 [[package]]
 name = "reqwest"
-version = "0.12.23"
+version = "0.12.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d429f34c8092b2d42c7c93cec323bb4adeb7c67698f70839adec842ec10c7ceb"
+checksum = "9d0946410b9f7b082a427e4ef5c8ff541a88b357bc6c637c40db3a68ac70a36f"
 dependencies = [
  "base64",
  "bytes",
