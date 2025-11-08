@@ -1,4 +1,4 @@
-use assert_cmd::{cargo_bin, Command};
+use assert_cmd::{Command, cargo_bin};
 use test_log::test;
 
 #[test]

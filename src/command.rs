@@ -4,9 +4,9 @@ pub mod backup;
 
 use clap::Subcommand;
 
-use crate::command::backup::args::BackupArgs;
-use crate::command::backup::BackupCommand;
 use crate::Result;
+use crate::command::backup::BackupCommand;
+use crate::command::backup::args::BackupArgs;
 
 /// Possible commands supported by our CLI application.
 #[derive(Debug, Subcommand)]
