@@ -20,8 +20,8 @@ use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 pub use error::Error;
 pub use error::Result;
-use tracing_subscriber::filter::Directive;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::filter::Directive;
 
 use crate::command::Command;
 

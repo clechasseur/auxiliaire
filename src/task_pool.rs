@@ -5,8 +5,8 @@ use std::panic::resume_unwind;
 use anyhow::Context;
 use tokio::task::{AbortHandle, JoinSet};
 
-use crate::error::MultiError;
 use crate::Result;
+use crate::error::MultiError;
 
 #[derive(Debug, Default)]
 pub struct TaskPool {

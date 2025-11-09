@@ -13,7 +13,7 @@ use std::panic::resume_unwind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use itertools::Itertools;
 use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
@@ -24,18 +24,18 @@ use mini_exercism::stream::StreamExt;
 use mini_exercism::{api, http};
 use tokio::io::{AsyncWriteExt, BufWriter};
 use tokio::{fs, spawn};
-use tracing::{debug, enabled, error, info, trace, warn, Level};
+use tracing::{Level, debug, enabled, error, info, trace, warn};
 
+use crate::Result;
 use crate::command::backup::args::{BackupArgs, OverwritePolicy, SolutionStatus};
 use crate::command::backup::iterations::{
-    get_iterations_dir_name, SyncOps, ITERATIONS_DIR_ENV_VAR_NAME,
+    ITERATIONS_DIR_ENV_VAR_NAME, SyncOps, get_iterations_dir_name,
 };
 use crate::command::backup::state::{
-    BackupState, AUXILIAIRE_STATE_DIR_NAME, BACKUP_STATE_FILE_NAME, BACKUP_STATE_TEMP_FILE_NAME,
+    AUXILIAIRE_STATE_DIR_NAME, BACKUP_STATE_FILE_NAME, BACKUP_STATE_TEMP_FILE_NAME, BackupState,
 };
 use crate::limiter::Limiter;
 use crate::task_pool::TaskPool;
-use crate::Result;
 
 /// Command wrapper used for the [`Backup`](crate::command::Command::Backup) command.
 ///
@@ -305,7 +305,7 @@ impl BackupCommand {
                             "error removing empty iterations directory for {}/{}",
                             solution.track.name, solution.exercise.name
                         )
-                    })
+                    });
                 },
             }
         }
@@ -441,9 +441,7 @@ impl BackupCommand {
             None => {
                 let error = format!(
                     "Iteration {} of solution to {}/{} is not marked as deleted but does not have a submission UUID",
-                    iteration.index,
-                    solution.track.name,
-                    solution.exercise.name,
+                    iteration.index, solution.track.name, solution.exercise.name,
                 );
 
                 error!("{}", error);
@@ -621,31 +619,30 @@ impl BackupCommand {
 
         let needs_backup = match (solution_exists, solution_needs_update, self.args.overwrite) {
             (true, false, OverwritePolicy::Always) => {
-                trace!("Solution to {}/{} already up-to-date on disk, but needs to be overwritten; will be cleaned up",
-                    solution.track.name, solution.exercise.name);
+                trace!(
+                    "Solution to {}/{} already up-to-date on disk, but needs to be overwritten; will be cleaned up",
+                    solution.track.name, solution.exercise.name
+                );
                 true
             },
             (true, false, OverwritePolicy::IfNewer) | (true, false, OverwritePolicy::Never) => {
                 trace!(
                     "Solution to {}/{} already exists on disk and is up-to-date; skipping",
-                    solution.track.name,
-                    solution.exercise.name
+                    solution.track.name, solution.exercise.name
                 );
                 false
             },
             (true, true, OverwritePolicy::Never) => {
                 trace!(
                     "Solution to {}/{} already exists on disk and cannot be overwritten; skipping",
-                    solution.track.name,
-                    solution.exercise.name
+                    solution.track.name, solution.exercise.name
                 );
                 false
             },
             (true, true, OverwritePolicy::IfNewer) | (true, true, OverwritePolicy::Always) => {
                 trace!(
                     "Solution to {}/{} already exists on disk but needs updating; will be cleaned up",
-                    solution.track.name,
-                    solution.exercise.name
+                    solution.track.name, solution.exercise.name
                 );
                 true
             },

@@ -52,38 +52,40 @@ impl BackupState {
 
     pub fn needs_update(&self, solution: &Solution) -> Result<bool> {
         if self.uuid != solution.uuid {
-            return Err(
-                anyhow!(
-                    "solution to {}/{} has a different uuid ({}) that what we last saw ({}): did you choose the wrong output directory?",
-                    solution.track.name,
-                    solution.exercise.name,
-                    solution.uuid,
-                    self.uuid,
-                )
-            );
+            return Err(anyhow!(
+                "solution to {}/{} has a different uuid ({}) that what we last saw ({}): did you choose the wrong output directory?",
+                solution.track.name,
+                solution.exercise.name,
+                solution.uuid,
+                self.uuid,
+            ));
         }
 
-        match (&self.last_iteration_marker, solution.last_iterated_at.as_ref(), solution.num_iterations) {
+        match (
+            &self.last_iteration_marker,
+            solution.last_iterated_at.as_ref(),
+            solution.num_iterations,
+        ) {
             (LastIterationMarker::None, _, _) => Ok(true),
-            (LastIterationMarker::LastIteratedAt(state_lia), Some(sol_lia), _) => Ok(state_lia != sol_lia),
-            (&LastIterationMarker::NumIterations(state_ni), _, sol_ni) if state_ni > sol_ni => Err(
-                anyhow!(
+            (LastIterationMarker::LastIteratedAt(state_lia), Some(sol_lia), _) => {
+                Ok(state_lia != sol_lia)
+            },
+            (&LastIterationMarker::NumIterations(state_ni), _, sol_ni) if state_ni > sol_ni => {
+                Err(anyhow!(
                     "solution to {}/{} has less iterations ({}) than what we last saw ({}): did you choose the wrong output directory?",
                     solution.track.name,
                     solution.exercise.name,
                     sol_ni,
                     state_ni,
-                )
-            ),
+                ))
+            },
             (&LastIterationMarker::NumIterations(state_ni), _, sol_ni) => Ok(state_ni != sol_ni),
-            (LastIterationMarker::LastIteratedAt(state_lia), None, _) => Err(
-                anyhow!(
-                    "solution to {}/{} used to have 'last iterated at' timestamp ({}) but no longer has one: did you choose the wrong output directory?",
-                    solution.track.name,
-                    solution.exercise.name,
-                    state_lia,
-                )
-            ),
+            (LastIterationMarker::LastIteratedAt(state_lia), None, _) => Err(anyhow!(
+                "solution to {}/{} used to have 'last iterated at' timestamp ({}) but no longer has one: did you choose the wrong output directory?",
+                solution.track.name,
+                solution.exercise.name,
+                state_lia,
+            )),
         }
     }
 }

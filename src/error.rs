@@ -81,8 +81,8 @@ mod tests {
             use anyhow::anyhow;
             use assert_matches::assert_matches;
 
-            use crate::error::MultiError;
             use crate::Error;
+            use crate::error::MultiError;
 
             #[test]
             fn no_error() {
