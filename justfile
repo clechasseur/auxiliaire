@@ -45,7 +45,7 @@ open_flag := if open == "true" { "--open" } else { "" }
 no_deps := if toolchain == "nightly" { "true" } else { "false" }
 no_deps_flag := if no_deps == "true" { "--no-deps" } else { "" }
 
-just := "just all_features=" + all_features + " all_targets=" + all_targets + " message_format=" + message_format + " target_tuple=" + target_tuple + " release=" + release + " workspace=" + workspace + " package=" + package + " warnings_as_errors=" + warnings_as_errors + " force_prep=" + force_prep
+just := "just all_features=" + all_features + " all_targets=" + all_targets + " message_format=" + message_format + " target_tuple=" + target_tuple + " release=" + release + " workspace=" + workspace + " package=" + package + " warnings_as_errors=" + warnings_as_errors + " force_prep=" + force_prep + " open=" + open + " no_deps=" + no_deps
 
 rustdoc_extra_flags := if toolchain == "nightly" { "--cfg docsrs" } else { "" }
 minimal_check_extra_flags := "--direct"
