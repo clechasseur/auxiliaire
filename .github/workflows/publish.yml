@@ -21,17 +21,12 @@ jobs:
           toolchain: stable
           cache: false
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-        with:
-          cache-on-failure: true
-
       - name: Authenticate to crates.io
         uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
         id: auth
 
       - name: Publish package
-        uses: clechasseur/rs-cargo@34806c2f3a52f2f236510fb17044cbcc62f04eba # v5.0.3
+        uses: clechasseur/rs-cargo@v5.0.3
         with:
           command: publish
         env:
