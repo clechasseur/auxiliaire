@@ -8,8 +8,7 @@ on:
 jobs:
   build-release-files:
     name: Build release files for ${{ matrix.arch }}-${{ matrix.platform }}
-    # Don't build on forks
-    if: github.repository_owner == 'clechasseur'
+    if: github.repository_owner == 'clechasseur' # Don't build on forks
     strategy:
       fail-fast: false
       matrix:
@@ -20,9 +19,9 @@ jobs:
             platform: apple-darwin
           - os: ubuntu-24.04
           - platform: apple-darwin
-            os: macos-14
+            os: macos-15
           - platform: pc-windows-msvc
-            os: windows-2022
+            os: windows-2025
           - crt-static: false
           - platform: pc-windows-msvc
             crt-static: true
@@ -52,7 +51,7 @@ jobs:
         if: ${{ matrix.crt-static }}
 
       - name: Build binaries and upload to GitHub release
-        uses: taiki-e/upload-rust-binary-action@0e34102c043ded9f2ca39f7af5cd99a540c61aff # v1.29.1
+        uses: taiki-e/upload-rust-binary-action@10c1cf6a3da113ad4e60018e386570529aa5f1d3 # v1.30.0
         with:
           bin: auxiliaire
           token: ${{ secrets.GITHUB_TOKEN }}
