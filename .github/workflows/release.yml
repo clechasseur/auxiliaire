@@ -1,22 +1,40 @@
 name: Release
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - v[0-9]+.[0-9]+.[0-9]+
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  create-release:
+    name: Create draft release ${{ inputs.tag }}
+    if: ${{ github.repository_owner == 'clechasseur' }} # Don't build on forks
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create GitHub draft release
+        uses: taiki-e/create-gh-release-action@v1.10.0
+        with:
+          draft: true
+
   build-release-files:
     name: Build release files for ${{ matrix.arch }}-${{ matrix.platform }}
-    if: github.repository_owner == 'clechasseur' # Don't build on forks
+    if: ${{ github.repository_owner == 'clechasseur' }} # Don't build on forks
+    needs: create-release
     strategy:
       fail-fast: false
       matrix:
         arch: [ aarch64, x86_64 ]
         platform: [ unknown-linux-gnu, apple-darwin, pc-windows-msvc ]
         include:
-          - arch: universal
-            platform: apple-darwin
           - os: ubuntu-24.04
           - platform: apple-darwin
             os: macos-15
@@ -25,6 +43,9 @@ jobs:
           - crt-static: false
           - platform: pc-windows-msvc
             crt-static: true
+          - arch: universal
+            platform: apple-darwin
+            os: macos-15
         exclude:
           - arch: aarch64
             platform: unknown-linux-gnu
@@ -42,7 +63,7 @@ jobs:
           cache: false
 
       - name: Setup cross-compilation tools
-        uses: taiki-e/setup-cross-toolchain-action@d62f33b587e73b0004731caebc7d2d46b18a7567 # v1.39.2
+        uses: taiki-e/setup-cross-toolchain-action@v1.39.2
         with:
           target: ${{ matrix.arch }}-${{ matrix.platform }}
 
@@ -51,7 +72,7 @@ jobs:
         if: ${{ matrix.crt-static }}
 
       - name: Build binaries and upload to GitHub release
-        uses: taiki-e/upload-rust-binary-action@10c1cf6a3da113ad4e60018e386570529aa5f1d3 # v1.30.0
+        uses: taiki-e/upload-rust-binary-action@v1.30.0
         with:
           bin: auxiliaire
           token: ${{ secrets.GITHUB_TOKEN }}
