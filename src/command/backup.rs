@@ -37,6 +37,11 @@ use crate::command::backup::state::{
 use crate::limiter::Limiter;
 use crate::task_pool::TaskPool;
 
+/// Default number of times each download is retried. Defaults to infinity (more or less).
+///
+/// See [api::v1::ClientBuilder::num_retries] and [api::v2::ClientBuilder::num_retries].
+pub const DEFAULT_MAX_RETRIES: u32 = u32::MAX;
+
 /// Command wrapper used for the [`Backup`](crate::command::Command::Backup) command.
 ///
 /// # Notes
@@ -79,9 +84,12 @@ impl BackupCommand {
             .unwrap_or_else(|| {
                 get_cli_credentials().with_context(|| "failed to get Exercism CLI credentials")
             })?;
+        let max_retries = args.max_retries.unwrap_or(DEFAULT_MAX_RETRIES);
 
-        let v1_client = build_client!(api::v1::Client, http_client, credentials, api_base_url);
-        let v2_client = build_client!(api::v2::Client, http_client, credentials, api_base_url);
+        let v1_client =
+            build_client!(api::v1::Client, http_client, credentials, api_base_url, max_retries);
+        let v2_client =
+            build_client!(api::v2::Client, http_client, credentials, api_base_url, max_retries);
         let limiter = Limiter::new(args.max_downloads);
         let iterations_dir_name = get_iterations_dir_name();
         let iterations_dir_filter = format!("{iterations_dir_name}/");
