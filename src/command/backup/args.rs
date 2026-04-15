@@ -44,6 +44,10 @@ pub struct BackupArgs {
     /// Maximum number of concurrent downloads
     #[arg(short, long, default_value_t = 4)]
     pub max_downloads: usize,
+
+    /// Maximum number of retries per download (defaults to infinity)
+    #[arg(long)]
+    pub max_retries: Option<u32>,
 }
 
 impl BackupArgs {
@@ -224,6 +228,7 @@ mod tests {
                     iterations_sync_policy: IterationsSyncPolicy::DoNotSync,
                     dry_run: false,
                     max_downloads: 4,
+                    max_retries: None,
                 }
             }
 
@@ -444,6 +449,7 @@ mod tests {
                     iterations_sync_policy: IterationsSyncPolicy::FullSync,
                     dry_run: false,
                     max_downloads: 4,
+                    max_retries: None,
                 }
             }
 
