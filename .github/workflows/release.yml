@@ -72,7 +72,7 @@ jobs:
         if: ${{ matrix.crt-static }}
 
       - name: Build binaries and upload to GitHub release
-        uses: taiki-e/upload-rust-binary-action@v1.30.0
+        uses: taiki-e/upload-rust-binary-action@v1.30.2
         with:
           bin: auxiliaire
           token: ${{ secrets.GITHUB_TOKEN }}
