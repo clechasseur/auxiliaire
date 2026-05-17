@@ -40,13 +40,13 @@ jobs:
           version: v1.17.9
 
       - name: Install cargo-hack
-        uses: clechasseur/rs-cargo@v5.0.3
+        uses: clechasseur/rs-cargo@v5.0.5
         with:
           command: binstall
           args: -y cargo-hack@0.6.44
 
       - name: Run clippy
-        uses: clechasseur/rs-clippy-check@v6.0.2
+        uses: clechasseur/rs-clippy-check@v6.0.4
         with:
           args: --workspace --all-targets --feature-powerset -- -D warnings
           tool: cargo-hack
@@ -67,7 +67,7 @@ jobs:
           cache: false
 
       - name: Run Rustfmt
-        uses: clechasseur/rs-fmt-check@v4.0.2
+        uses: clechasseur/rs-fmt-check@v4.0.4
         with:
           args: --all
 
@@ -102,7 +102,7 @@ jobs:
           version: v1.17.9
 
       - name: Install required tools
-        uses: clechasseur/rs-cargo@v5.0.3
+        uses: clechasseur/rs-cargo@v5.0.5
         with:
           command: binstall
           args: -y just@1.48.1 cargo-hack@0.6.44 cargo-minimal-versions@0.1.37 cargo-msrv-prep@2.1.1
@@ -141,7 +141,7 @@ jobs:
           version: v1.17.9
 
       - name: Install required tools
-        uses: clechasseur/rs-cargo@v5.0.3
+        uses: clechasseur/rs-cargo@v5.0.5
         with:
           command: binstall
           args: -y just@1.48.1 cargo-hack@0.6.44
@@ -180,7 +180,7 @@ jobs:
           version: v1.17.9
 
       - name: Install required tools
-        uses: clechasseur/rs-cargo@v5.0.3
+        uses: clechasseur/rs-cargo@v5.0.5
         with:
           command: binstall
           args: -y just@1.48.1 cargo-llvm-cov@0.8.5
@@ -231,7 +231,7 @@ jobs:
           version: v1.17.9
 
       - name: Install just
-        uses: clechasseur/rs-cargo@v5.0.3
+        uses: clechasseur/rs-cargo@v5.0.5
         with:
           command: binstall
           args: -y just@1.48.1
