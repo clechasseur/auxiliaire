@@ -91,6 +91,7 @@ impl BackupCommand {
             build_client!(api::v1::Client, http_client, credentials, api_base_url, max_retries);
         let v2_client =
             build_client!(api::v2::Client, http_client, credentials, api_base_url, max_retries);
+
         let limiter = Limiter::new(args.max_downloads);
         let iterations_dir_name = get_iterations_dir_name();
         let iterations_dir_filter = format!("{iterations_dir_name}/");
@@ -108,7 +109,7 @@ impl BackupCommand {
     /// Execute the backup operation.
     ///
     /// See [struct description](Self) for details on how to call this method.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip_all, ret(level = "trace")))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip_all, ret(level = "trace"), err))]
     pub async fn execute(this: Arc<Self>) -> Result<()> {
         info!("Starting Exercism solutions backup to {}", this.args.path.display());
         trace!(?this.args);
@@ -130,7 +131,7 @@ impl BackupCommand {
         }
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(this), ret(level = "trace")))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(this), ret(level = "trace"), err))]
     async fn backup_solutions(this: Arc<Self>, output_path: PathBuf) -> Result<()> {
         let mut task_pool = TaskPool::new();
 
@@ -184,7 +185,8 @@ impl BackupCommand {
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
         skip_all,
         fields(solution.track.name, solution.exercise.name),
-        ret(level = "trace")
+        ret(level = "trace"),
+        err
     ))]
     async fn backup_solution(
         this: Arc<Self>,
@@ -339,7 +341,8 @@ impl BackupCommand {
         level = "debug",
         skip_all,
         fields(solution.track.name, solution.exercise.name, file),
-        ret(level = "trace")
+        ret(level = "trace"),
+        err
     ))]
     async fn backup_one_file(
         this: Arc<Self>,
@@ -379,7 +382,8 @@ impl BackupCommand {
         level = "debug",
         skip_all,
         fields(solution.track.name, solution.exercise.name, iteration.index = iteration),
-        ret(level = "trace")
+        ret(level = "trace"),
+        err
     ))]
     async fn remove_one_existing_iteration(
         this: Arc<Self>,
@@ -419,7 +423,8 @@ impl BackupCommand {
         level = "debug",
         skip_all,
         fields(solution.track.name, solution.exercise.name, iteration.index),
-        ret(level = "trace")
+        ret(level = "trace"),
+        err
     ))]
     async fn backup_one_iteration(
         this: Arc<Self>,
@@ -489,6 +494,7 @@ impl BackupCommand {
         skip(self, solution),
         fields(solution.track.name, solution.exercise.name),
         ret(level = "trace")
+        err
     ))]
     async fn save_backup_state(
         &self,
@@ -535,7 +541,7 @@ impl BackupCommand {
 
     #[cfg_attr(
         not(coverage_nightly),
-        tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"), err)
     )]
     async fn create_output_directory(&self, output_path: &Path) -> Result<()> {
         if !self.args.dry_run {
@@ -547,7 +553,7 @@ impl BackupCommand {
 
     #[cfg_attr(
         not(coverage_nightly),
-        tracing::instrument(level = "debug", skip(self), ret(level = "trace"))
+        tracing::instrument(level = "debug", skip(self), ret(level = "trace"), err)
     )]
     async fn get_solutions_for_page(
         &self,
@@ -605,7 +611,7 @@ impl BackupCommand {
 
     #[cfg_attr(
         not(coverage_nightly),
-        tracing::instrument(level = "trace", skip(self, solutions), ret(level = "trace"))
+        tracing::instrument(level = "trace", skip(self, solutions), ret(level = "trace"), err)
     )]
     async fn create_track_directories(
         &self,
@@ -631,7 +637,8 @@ impl BackupCommand {
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
         skip_all,
         fields(solution.track.name, solution.exercise.name)
-        ret(level = "debug")
+        ret(level = "debug"),
+        err
     ))]
     async fn get_solution_files(&self, solution: &Solution) -> Result<Vec<String>> {
         let _permit = self.limiter.get_permit().await;
@@ -653,7 +660,8 @@ impl BackupCommand {
         level = "debug",
         skip(self, solution),
         fields(solution.track.name, solution.exercise.name),
-        ret(level = "debug")
+        ret(level = "debug"),
+        err
     ))]
     async fn solution_needs_backup(
         &self,
@@ -711,7 +719,8 @@ impl BackupCommand {
         level = "trace",
         skip(self, solution),
         fields(solution.track.name, solution.exercise.name),
-        ret(level = "trace")
+        ret(level = "trace"),
+        err
     ))]
     async fn create_solution_directories(
         &self,
@@ -766,7 +775,8 @@ impl BackupCommand {
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
         skip_all,
         fields(solution.track.name, solution.exercise.name)
-        ret(level = "debug")
+        ret(level = "debug"),
+        err
     ))]
     async fn get_matching_solution_iterations(
         &self,
@@ -800,7 +810,8 @@ impl BackupCommand {
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
         skip(self, solution),
         fields(solution.track.name, solution.exercise.name),
-        ret(level = "debug")
+        ret(level = "debug"),
+        err
     ))]
     async fn get_existing_iterations(
         &self,
@@ -902,7 +913,7 @@ impl BackupCommand {
 
     #[cfg_attr(
         not(coverage_nightly),
-        tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"), err)
     )]
     async fn create_file_parent_directory(&self, destination_path: &Path) -> Result<()> {
         match (self.args.dry_run, destination_path.parent()) {
@@ -926,7 +937,7 @@ impl BackupCommand {
 
     #[cfg_attr(
         not(coverage_nightly),
-        tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"), err)
     )]
     async fn remove_directory_content(&self, dir_path: &Path) -> Result<()> {
         if !self.args.dry_run {
