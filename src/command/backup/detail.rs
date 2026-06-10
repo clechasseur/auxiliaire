@@ -17,3 +17,9 @@ macro_rules! build_client {
         builder.build()?
     }};
 }
+
+#[derive(Debug, Copy, Clone)]
+pub struct NeedsBackupInfo {
+    pub needs_backup: bool,
+    pub solution_exists: bool,
+}

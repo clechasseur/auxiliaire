@@ -42,8 +42,12 @@ pub struct BackupArgs {
     pub dry_run: bool,
 
     /// Maximum number of concurrent downloads
-    #[arg(short, long, default_value_t = 4)]
+    #[arg(short, long, default_value_t = 2)]
     pub max_downloads: usize,
+
+    /// Maximum number of solutions to fetch at once when iterating solutions
+    #[arg(long, default_value_t = 256)]
+    pub max_solutions_per_page: i64,
 
     /// Maximum number of retries per download (defaults to infinity)
     #[arg(long)]
@@ -228,6 +232,7 @@ mod tests {
                     iterations_sync_policy: IterationsSyncPolicy::DoNotSync,
                     dry_run: false,
                     max_downloads: 4,
+                    max_solutions_per_page: 256,
                     max_retries: None,
                 }
             }
@@ -449,6 +454,7 @@ mod tests {
                     iterations_sync_policy: IterationsSyncPolicy::FullSync,
                     dry_run: false,
                     max_downloads: 4,
+                    max_solutions_per_page: 256,
                     max_retries: None,
                 }
             }
