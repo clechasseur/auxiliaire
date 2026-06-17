@@ -9,12 +9,13 @@ mod state;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
-use std::panic::resume_unwind;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::time::Instant;
 
 use anyhow::{Context, anyhow};
 use itertools::Itertools;
+use jiff::Span;
 use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
 use mini_exercism::api::v2::{solution, solutions};
@@ -22,8 +23,8 @@ use mini_exercism::cli::get_cli_credentials;
 use mini_exercism::core::Credentials;
 use mini_exercism::stream::StreamExt;
 use mini_exercism::{api, http};
+use tokio::fs;
 use tokio::io::{AsyncWriteExt, BufWriter};
-use tokio::{fs, spawn};
 use tracing::{Level, debug, enabled, error, info, trace, warn};
 
 use crate::Result;
@@ -109,10 +110,14 @@ impl BackupCommand {
     /// Execute the backup operation.
     ///
     /// See [struct description](Self) for details on how to call this method.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip_all, ret(level = "trace"), err))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip_all, ret(level = "trace"), err)
+    )]
     pub async fn execute(this: Arc<Self>) -> Result<()> {
-        info!("Starting Exercism solutions backup to {}", this.args.path.display());
+        info!(path = %this.args.path.display(), "Starting Exercism solutions backup");
         trace!(?this.args);
+        let start = Instant::now();
 
         this.create_output_directory(&this.args.path).await?;
 
@@ -121,17 +126,18 @@ impl BackupCommand {
         })?;
         trace!(output_path = %output_path.display());
 
-        match spawn(Self::backup_solutions(Arc::clone(&this), output_path)).await {
-            Ok(Ok(())) => {
-                info!("Exercism solutions backup complete");
-                Ok(())
-            },
-            Ok(Err(task_error)) => Err(task_error),
-            Err(join_error) => resume_unwind(join_error.into_panic()),
-        }
+        Self::backup_solutions(Arc::clone(&this), output_path).await?;
+
+        let end = Instant::now();
+        let elapsed = Span::try_from(end.duration_since(start))?;
+        info!(elapsed = %format!("{elapsed:#}"), "Exercism solutions backup complete");
+        Ok(())
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(this), ret(level = "trace"), err))]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(level = "trace", skip(this), ret(level = "trace"), err)
+    )]
     async fn backup_solutions(this: Arc<Self>, output_path: PathBuf) -> Result<()> {
         let mut task_pool = TaskPool::new();
 
@@ -140,9 +146,9 @@ impl BackupCommand {
             let (solutions, meta) = this.get_solutions_for_page(page).await?;
 
             if solutions.is_empty() {
-                info!("No solutions to backup in page {page}");
+                info!(page, "No solutions to backup in page {page}");
             } else {
-                if this.args.dry_run && enabled!(Level::INFO) {
+                if this.args.dry_run && enabled!(Level::DEBUG) {
                     let solutions_list = solutions
                         .iter()
                         .map(|solution| {
@@ -150,9 +156,14 @@ impl BackupCommand {
                         })
                         .collect::<Vec<_>>()
                         .join(", ");
-                    info!("Solutions to backup in page {page}: {solutions_list}");
+                    debug!(
+                        page,
+                        count = solutions.len(),
+                        solutions = solutions_list,
+                        "Solutions found"
+                    );
                 } else {
-                    info!("Number of solutions to backup in page {page}: {}", solutions.len());
+                    debug!(page, count = solutions.len(), "Solutions found");
                 }
 
                 // Create track directories right away so that concurrent tasks don't end up trying
@@ -177,14 +188,16 @@ impl BackupCommand {
             page += 1;
         }
 
+        trace!("Waiting for all solutions to be backed up...");
         task_pool
             .join(|| "errors detected while backing up solutions")
             .await
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
-        skip_all,
-        fields(solution.track.name, solution.exercise.name),
+        level = "trace",
+        skip(this, solution),
+        fields(track = solution.track.name, exercise = solution.exercise.name),
         ret(level = "trace"),
         err
     ))]
@@ -193,11 +206,16 @@ impl BackupCommand {
         mut output_path: PathBuf,
         solution: Solution,
     ) -> Result<()> {
+        info!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Starting solution backup"
+        );
         trace!(?solution);
 
         output_path.push(&solution.track.name);
         output_path.push(&solution.exercise.name);
-        trace!(output_path = %output_path.display());
+        trace!(solution_output_path = %output_path.display());
 
         let files = this.get_solution_files(&solution).await.with_context(|| {
             format!(
@@ -205,11 +223,18 @@ impl BackupCommand {
                 solution.track.name, solution.exercise.name,
             )
         })?;
+        trace!(?files);
 
         let NeedsBackupInfo { needs_backup, solution_exists } =
             this.solution_needs_backup(&solution, &output_path).await?;
+        trace!(needs_backup, solution_exists);
         if this.args.dry_run && needs_backup {
-            debug!("Files to back up: {}", files.join(", "));
+            debug!(
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                ?files,
+                "Files to back up"
+            );
         }
 
         if this.args.iterations_sync_policy.sync() && this.has_iterations_dir_collision(&files) {
@@ -221,9 +246,9 @@ impl BackupCommand {
                 ITERATIONS_DIR_ENV_VAR_NAME,
             );
 
-            warn!("{}", warning);
+            warn!("{warning}");
             if !this.args.dry_run {
-                return Err(anyhow!("{}", warning));
+                return Err(anyhow!("{warning}"));
             }
         }
 
@@ -231,20 +256,29 @@ impl BackupCommand {
         let existing_iterations = this
             .get_existing_iterations(&solution, &output_path)
             .await?;
-        let iteration_ops = this.get_iteration_sync_ops(matching_iterations, existing_iterations);
+        let iteration_ops =
+            this.get_iteration_sync_ops(&solution, matching_iterations, existing_iterations);
 
         if this.args.iterations_sync_policy.clean_up_old()
             && !iteration_ops.existing_iterations_to_clean_up.is_empty()
         {
             debug!(
-                "Existing iterations to clean up: {}",
-                iteration_ops.existing_iterations_to_clean_up.len()
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                existing_iterations_to_clean_up_count =
+                    iteration_ops.existing_iterations_to_clean_up.len(),
+                "Existing iterations to cleanup found"
             );
         }
         if this.args.iterations_sync_policy.backup_new()
             && !iteration_ops.iterations_to_backup.is_empty()
         {
-            debug!("Iterations to back up: {}", iteration_ops.iterations_to_backup.len());
+            debug!(
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                iterations_to_backup_count = iteration_ops.iterations_to_backup.len(),
+                "Iterations to back up found"
+            );
         }
 
         if !needs_backup && iteration_ops.is_empty() {
@@ -299,6 +333,11 @@ impl BackupCommand {
                 }
             }
 
+            trace!(
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                "Waiting for solution to be completely backed up..."
+            );
             task_pool
                 .join(|| {
                     format!(
@@ -332,15 +371,19 @@ impl BackupCommand {
             this.save_backup_state(&solution, &output_path).await?;
         }
 
-        info!("Solution to {}/{} downloaded", solution.track.name, solution.exercise.name);
+        info!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Solution backup complete"
+        );
 
         Ok(())
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
-        level = "debug",
+        level = "trace",
         skip_all,
-        fields(solution.track.name, solution.exercise.name, file),
+        fields(track = solution.track.name, exercise = solution.exercise.name, file),
         ret(level = "trace"),
         err
     ))]
@@ -350,6 +393,13 @@ impl BackupCommand {
         file: String,
         mut destination_path: PathBuf,
     ) -> Result<()> {
+        debug!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            file,
+            "Backing up solution file"
+        );
+
         destination_path.extend(file.split('/'));
         trace!(destination_path = %destination_path.display());
 
@@ -379,9 +429,9 @@ impl BackupCommand {
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
-        level = "debug",
+        level = "trace",
         skip_all,
-        fields(solution.track.name, solution.exercise.name, iteration.index = iteration),
+        fields(track = solution.track.name, exercise = solution.exercise.name, iteration.index = iteration),
         ret(level = "trace"),
         err
     ))]
@@ -391,6 +441,13 @@ impl BackupCommand {
         iteration: i32,
         mut destination_path: PathBuf,
     ) -> Result<()> {
+        debug!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            iteration.index = iteration,
+            "Removing existing solution iteration from disk"
+        );
+
         destination_path.push(iteration.to_string());
         trace!(destination_path = %destination_path.display());
 
@@ -409,20 +466,15 @@ impl BackupCommand {
             fs::remove_dir(&destination_path)
                 .await
                 .with_context(context)?;
-
-            debug!(
-                "Iteration {} of solution to {}/{} removed from disk",
-                iteration, solution.track.name, solution.exercise.name,
-            );
         }
 
         Ok(())
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
-        level = "debug",
+        level = "trace",
         skip_all,
-        fields(solution.track.name, solution.exercise.name, iteration.index),
+        fields(track = solution.track.name, exercise = solution.exercise.name, iteration.index),
         ret(level = "trace"),
         err
     ))]
@@ -432,6 +484,13 @@ impl BackupCommand {
         iteration: Iteration,
         mut destination_path: PathBuf,
     ) -> Result<()> {
+        debug!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            iteration.index,
+            "Backing up solution iteration"
+        );
+
         destination_path.push(iteration.index.to_string());
         trace!(destination_path = %destination_path.display());
 
@@ -449,10 +508,12 @@ impl BackupCommand {
                         )
                     })?
                     .files;
+                trace!(?files);
 
                 for file in files {
                     let mut file_path = destination_path.clone();
                     file_path.push(&file.filename);
+                    trace!(file_path = %file_path.display());
 
                     this.create_file_parent_directory(&file_path).await?;
                     if !this.args.dry_run {
@@ -469,8 +530,10 @@ impl BackupCommand {
                 }
 
                 debug!(
-                    "Iteration {} of solution to {}/{} downloaded",
-                    iteration.index, solution.track.name, solution.exercise.name,
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    iteration.index,
+                    "Solution iteration downloaded"
                 );
             },
             None => {
@@ -479,7 +542,7 @@ impl BackupCommand {
                     iteration.index, solution.track.name, solution.exercise.name,
                 );
 
-                error!("{}", error);
+                error!("{error}");
                 if !this.args.dry_run {
                     return Err(anyhow!(error));
                 }
@@ -492,7 +555,7 @@ impl BackupCommand {
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
         level = "trace",
         skip(self, solution),
-        fields(solution.track.name, solution.exercise.name),
+        fields(track = solution.track.name, exercise = solution.exercise.name),
         ret(level = "trace")
         err
     ))]
@@ -501,6 +564,12 @@ impl BackupCommand {
         solution: &Solution,
         solution_output_path: &Path,
     ) -> Result<()> {
+        debug!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Saving solution backup state"
+        );
+
         let state = BackupState::for_solution(solution.clone());
         let state = serde_json::to_string_pretty(&state).with_context(|| {
             format!(
@@ -511,6 +580,7 @@ impl BackupCommand {
 
         let mut temp_state_file_path = solution_output_path.to_path_buf();
         temp_state_file_path.push(BACKUP_STATE_TEMP_FILE_NAME);
+        trace!(temp_state_file_path = %temp_state_file_path.display());
         self.create_file_parent_directory(&temp_state_file_path)
             .await?;
         fs::write(&temp_state_file_path, state)
@@ -526,6 +596,7 @@ impl BackupCommand {
 
         let mut state_file_path = solution_output_path.to_path_buf();
         state_file_path.push(BACKUP_STATE_FILE_NAME);
+        trace!(state_file_path = %state_file_path.display());
         fs::rename(&temp_state_file_path, &state_file_path)
             .await
             .with_context(|| {
@@ -553,15 +624,18 @@ impl BackupCommand {
 
     #[cfg_attr(
         not(coverage_nightly),
-        tracing::instrument(level = "debug", skip(self), ret(level = "trace"), err)
+        tracing::instrument(level = "trace", skip(self), ret(level = "trace"), err)
     )]
     async fn get_solutions_for_page(
         &self,
         page: i64,
     ) -> Result<(Vec<Solution>, solutions::ResponseMeta)> {
+        info!(page, "Getting solutions");
+
         let filters = self.get_solutions_filters();
         let paging =
             solutions::Paging::for_page(page).and_per_page(self.args.max_solutions_per_page);
+        trace!(?filters, ?paging);
 
         let _permit = self.limiter.get_permit().await;
         let response = self
@@ -618,11 +692,14 @@ impl BackupCommand {
         output_path: &Path,
         solutions: &[Solution],
     ) -> Result<()> {
+        debug!(count = solutions.len(), "Creating track directories for solutions");
+
         if !self.args.dry_run {
             let track_names = solutions
                 .iter()
                 .map(|solution| solution.track.name.as_str())
                 .collect::<HashSet<_>>();
+            trace!(?track_names);
 
             for track_name in track_names {
                 let mut destination_path = output_path.to_path_buf();
@@ -635,12 +712,19 @@ impl BackupCommand {
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
+        level = "trace",
         skip_all,
-        fields(solution.track.name, solution.exercise.name)
-        ret(level = "debug"),
+        fields(track = solution.track.name, exercise = solution.exercise.name)
+        ret(level = "trace"),
         err
     ))]
     async fn get_solution_files(&self, solution: &Solution) -> Result<Vec<String>> {
+        info!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Getting solution files"
+        );
+
         let _permit = self.limiter.get_permit().await;
         Ok(self
             .v1_client
@@ -656,11 +740,12 @@ impl BackupCommand {
             .files)
     }
 
+    // noinspection DuplicatedCode
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
-        level = "debug",
+        level = "trace",
         skip(self, solution),
-        fields(solution.track.name, solution.exercise.name),
-        ret(level = "debug"),
+        fields(track = solution.track.name, exercise = solution.exercise.name),
+        ret(level = "trace"),
         err
     ))]
     async fn solution_needs_backup(
@@ -677,36 +762,41 @@ impl BackupCommand {
         let needs_backup = match (solution_exists, solution_needs_update, self.args.overwrite) {
             (true, false, OverwritePolicy::Always) => {
                 debug!(
-                    "Solution to {}/{} already up-to-date on disk, but needs to be overwritten; will be cleaned up",
-                    solution.track.name, solution.exercise.name
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    "Solution already up-to-date on disk, but needs to be overwritten; will be cleaned up"
                 );
                 true
             },
             (true, false, OverwritePolicy::IfNewer) | (true, false, OverwritePolicy::Never) => {
                 debug!(
-                    "Solution to {}/{} already exists on disk and is up-to-date; skipping",
-                    solution.track.name, solution.exercise.name
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    "Solution already exists on disk and is up-to-date; skipping"
                 );
                 false
             },
             (true, true, OverwritePolicy::Never) => {
                 debug!(
-                    "Solution to {}/{} already exists on disk and cannot be overwritten; skipping",
-                    solution.track.name, solution.exercise.name
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    "Solution already exists on disk and cannot be overwritten; skipping"
                 );
                 false
             },
             (true, true, OverwritePolicy::IfNewer) | (true, true, OverwritePolicy::Always) => {
                 debug!(
-                    "Solution to {}/{} already exists on disk but needs updating; will be cleaned up",
-                    solution.track.name, solution.exercise.name
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    "Solution already exists on disk but needs updating; will be cleaned up"
                 );
                 true
             },
             (false, _, _) => {
                 debug!(
-                    "Solution to {}/{} does not exist on disk; will be backed up",
-                    solution.track.name, solution.exercise.name
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    "Solution does not exist on disk; will be backed up"
                 );
                 true
             },
@@ -715,10 +805,11 @@ impl BackupCommand {
         Ok(NeedsBackupInfo { needs_backup, solution_exists })
     }
 
+    // noinspection DuplicatedCode
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
         level = "trace",
         skip(self, solution),
-        fields(solution.track.name, solution.exercise.name),
+        fields(track = solution.track.name, exercise = solution.exercise.name),
         ret(level = "trace"),
         err
     ))]
@@ -729,8 +820,20 @@ impl BackupCommand {
         solution: &Solution,
         solution_output_path: &Path,
     ) -> Result<()> {
+        debug!(
+            track = solution.track.name, exercise = solution.exercise.name,
+            solution_output_path = %solution_output_path.display(),
+            "Creating directories for solution"
+        );
+
         if needs_backup {
             if solution_exists {
+                trace!(
+                    track = solution.track.name,
+                    exercise = solution.exercise.name,
+                    "Solution directory already exists but must be overwritten; removing"
+                );
+
                 self.remove_directory_content(solution_output_path)
                     .await
                     .with_context(|| {
@@ -757,6 +860,11 @@ impl BackupCommand {
             let mut iterations_output_path = solution_output_path.to_path_buf();
             iterations_output_path.push(&self.iterations_dir_name);
 
+            debug!(
+                track = solution.track.name, exercise = solution.exercise.name,
+                iterations_output_path = %iterations_output_path.display(),
+                "Creating directory for iterations",
+            );
             fs::create_dir_all(&iterations_output_path)
                 .await
                 .with_context(|| {
@@ -773,16 +881,28 @@ impl BackupCommand {
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
+        level = "trace",
         skip_all,
-        fields(solution.track.name, solution.exercise.name)
-        ret(level = "debug"),
+        fields(track = solution.track.name, exercise = solution.exercise.name)
+        ret(level = "trace"),
         err
     ))]
     async fn get_matching_solution_iterations(
         &self,
         solution: &Solution,
     ) -> Result<Vec<Iteration>> {
+        info!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Getting solution iterations from Exercism",
+        );
+
         if !self.args.iterations_sync_policy.backup_new() && !self.args.dry_run {
+            info!(
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                "Iterations sync policy not set to backup new iterations; skipping"
+            );
             return Ok(vec![]);
         }
 
@@ -800,6 +920,14 @@ impl BackupCommand {
                 .iterations
         };
 
+        debug!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            count = iterations.len(),
+            "Iterations found (before filtering)"
+        );
+        trace!(track = solution.track.name, exercise = solution.exercise.name, ?iterations);
+
         Ok(iterations
             .into_iter()
             .filter(|iter| self.args.iteration_matches(iter))
@@ -807,10 +935,12 @@ impl BackupCommand {
             .collect_vec())
     }
 
+    //noinspection DuplicatedCode
     #[cfg_attr(not(coverage_nightly), tracing::instrument(
+        level = "trace",
         skip(self, solution),
-        fields(solution.track.name, solution.exercise.name),
-        ret(level = "debug"),
+        fields(track = solution.track.name, exercise = solution.exercise.name),
+        ret(level = "trace"),
         err
     ))]
     async fn get_existing_iterations(
@@ -818,69 +948,95 @@ impl BackupCommand {
         solution: &Solution,
         solution_output_path: &Path,
     ) -> Result<Vec<i32>> {
+        info!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Getting existing solution iterations on disk",
+        );
+
         if !self.args.iterations_sync_policy.sync() && !self.args.dry_run {
+            info!(
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                "Iterations sync policy not set to sync iterations; skipping"
+            );
             return Ok(vec![]);
         }
 
         let mut iterations_path = solution_output_path.to_path_buf();
         iterations_path.push(&self.iterations_dir_name);
         if !self.directory_exists(&iterations_path).await {
-            debug!(
-                "Directory for iterations of solution to {}/{} does not exist; no existing iteration found",
-                solution.track.name, solution.exercise.name
+            info!(
+                track = solution.track.name,
+                exercise = solution.exercise.name,
+                "Iterations directory does not exist; no existing iteration found"
             );
             return Ok(vec![]);
         }
 
-        let _permit = self.limiter.get_permit().await;
-        let mut iterations_dir_content =
-            fs::read_dir(&iterations_path).await.with_context(|| {
-                format!(
-                    "failed to list existing backed up iterations for solution to {}/{}",
-                    solution.track.name, solution.exercise.name,
-                )
-            })?;
-
-        let mut iterations = Vec::new();
-        loop {
-            match iterations_dir_content.next_entry().await {
-                Ok(Some(entry)) => {
-                    let iteration = entry
-                        .file_type()
-                        .await
-                        .ok()
-                        .and_then(|file_type| {
-                            file_type.is_dir().then(|| entry.file_name().into_string().ok())
-                        })
-                        .flatten()
-                        .and_then(|file_name| {
-                            file_name.parse::<i32>().ok()
-                        });
-                    if let Some(iteration) = iteration {
-                        iterations.push(iteration);
-                    }
-                },
-                Ok(None) => break,
-                Err(err) => return Err(err).with_context(|| {
+        let mut iterations = {
+            let _permit = self.limiter.get_permit().await;
+            let mut iterations_dir_content =
+                fs::read_dir(&iterations_path).await.with_context(|| {
                     format!(
-                        "failed to scan existing iterations back up directory for solution to {}/{}",
-                        solution.track.name,
-                        solution.exercise.name,
+                        "failed to list existing backed up iterations for solution to {}/{}",
+                        solution.track.name, solution.exercise.name,
                     )
-                }),
+                })?;
+
+            let mut iterations = Vec::new();
+            loop {
+                match iterations_dir_content.next_entry().await {
+                    Ok(Some(entry)) => {
+                        let iteration = entry
+                            .file_type()
+                            .await
+                            .ok()
+                            .and_then(|file_type| {
+                                file_type.is_dir().then(|| entry.file_name().into_string().ok())
+                            })
+                            .flatten()
+                            .and_then(|file_name| {
+                                file_name.parse::<i32>().ok()
+                            });
+                        if let Some(iteration) = iteration {
+                            iterations.push(iteration);
+                        }
+                    },
+                    Ok(None) => break,
+                    Err(err) => return Err(err).with_context(|| {
+                        format!(
+                            "failed to scan existing iterations back up directory for solution to {}/{}",
+                            solution.track.name,
+                            solution.exercise.name,
+                        )
+                    }),
+                }
             }
-        }
+
+            iterations
+        };
+
+        debug!(
+            "Found {} existing iterations for {}/{}",
+            iterations.len(),
+            solution.track.name,
+            solution.exercise.name
+        );
 
         iterations.sort_unstable();
         Ok(iterations)
     }
 
-    #[cfg_attr(
-        not(coverage_nightly),
-        tracing::instrument(level = "debug", skip_all, ret(level = "debug"))
-    )]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(
+        level = "trace",
+        skip_all,
+        fields(track = solution.track.name, exercise = solution.exercise.name),
+        ret(level = "trace")
+    ))]
     fn get_iteration_sync_ops<M, E>(
         &self,
+        solution: &Solution,
         matching_iterations: M,
         existing_iterations: E,
     ) -> SyncOps
@@ -888,6 +1044,12 @@ impl BackupCommand {
         M: IntoIterator<Item = Iteration>,
         E: IntoIterator<Item = i32>,
     {
+        debug!(
+            track = solution.track.name,
+            exercise = solution.exercise.name,
+            "Computing iterations to add/update/delete"
+        );
+
         let mut existing_it = existing_iterations.into_iter().peekable();
 
         let mut ops = SyncOps::default();
@@ -916,6 +1078,11 @@ impl BackupCommand {
         tracing::instrument(level = "trace", skip(self), ret(level = "trace"), err)
     )]
     async fn create_file_parent_directory(&self, destination_path: &Path) -> Result<()> {
+        trace!(
+            destination_path = %destination_path.display(),
+            "Creating file parent directory",
+        );
+
         match (self.args.dry_run, destination_path.parent()) {
             (false, Some(parent)) => fs::create_dir_all(parent).await.with_context(|| {
                 format!("failed to make sure parent of file {} exists", destination_path.display())
@@ -940,6 +1107,8 @@ impl BackupCommand {
         tracing::instrument(level = "trace", skip(self), ret(level = "trace"), err)
     )]
     async fn remove_directory_content(&self, dir_path: &Path) -> Result<()> {
+        trace!(dir_path = %dir_path.display(), "Removing directory content");
+
         if !self.args.dry_run {
             let mut dir_content = fs::read_dir(dir_path).await?;
 
@@ -956,9 +1125,8 @@ impl BackupCommand {
                     },
                     Ok(Some(entry)) => {
                         trace!(
-                            "Skipping {} while removing directory {}",
-                            entry.path().display(),
-                            dir_path.display(),
+                            dir_path = %dir_path.display(), entry.path = %entry.path().display(),
+                            "Skipping entry while removing directory"
                         );
                     },
                     Ok(None) => break,
@@ -975,6 +1143,8 @@ impl BackupCommand {
         tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
     )]
     fn should_skip_dir_entry(&self, entry_path: &Path) -> bool {
+        trace!(entry_path = %entry_path.display(), "Checking if directory entry should be skipped");
+
         entry_path
             .file_name()
             .map(|name| {
@@ -988,9 +1158,10 @@ impl BackupCommand {
         tracing::instrument(level = "trace", skip(self), ret(level = "trace"))
     )]
     fn has_iterations_dir_collision(&self, files: &[String]) -> bool {
+        trace!(?files, "Check for collision with iterations dir ({})", self.iterations_dir_name);
+
         files.iter().any(|file| {
-            file.starts_with(&self.iterations_dir_name)
-                || file.starts_with(&self.iterations_dir_filter)
+            file == &self.iterations_dir_name || file.starts_with(&self.iterations_dir_filter)
         })
     }
 }

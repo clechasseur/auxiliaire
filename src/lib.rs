@@ -73,7 +73,11 @@ impl Cli {
         let env_filter = EnvFilter::builder()
             .with_default_directive(default_directive)
             .from_env_lossy();
-        tracing_subscriber::fmt().with_env_filter(env_filter).init();
+        tracing_subscriber::fmt()
+            .with_env_filter(env_filter)
+            .with_ansi(true)
+            .with_target(false)
+            .init();
 
         cli.command.execute().await
     }
