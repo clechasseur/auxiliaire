@@ -61,9 +61,12 @@ pub struct BackupArgs {
 
     /// Maximum waiting time between download retries
     ///
-    /// Information about supported formats:
-    /// https://docs.rs/jiff/0.2.28/jiff/struct.SignedDuration.html#parsing-and-printing
-    #[arg(long, default_value = "16s")]
+    /// For information about supported formats, see [`SignedDuration`](jiff::SignedDuration).
+    #[arg(
+        long,
+        default_value = "16s",
+        long_help = "Maximum waiting time between download retries\n\nInformation about supported formats:\nhttps://docs.rs/jiff/0.2.28/jiff/struct.SignedDuration.html#parsing-and-printing"
+    )]
     pub max_retry_interval: FriendlyDuration,
 }
 
