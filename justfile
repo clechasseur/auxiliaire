@@ -187,5 +187,8 @@ unprep *extra_args:
 
 # ----- Project-specific recipes -----
 
+# Run the auxiliaire tool
+auxiliaire *extra_args: (run "auxiliaire" extra_args)
+
 # Run the auxiliaire tool's backup command
 backup *extra_args: (run "auxiliaire" "backup" extra_args)

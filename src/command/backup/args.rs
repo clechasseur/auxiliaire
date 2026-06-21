@@ -7,6 +7,8 @@ use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
 use mini_exercism::api::v2::{iteration, solution};
 
+use crate::duration::FriendlyDuration;
+
 /// Command-line arguments accepted by the [`Backup`](crate::command::Command::Backup) command.
 #[derive(Debug, Clone, Args)]
 pub struct BackupArgs {
@@ -52,6 +54,17 @@ pub struct BackupArgs {
     /// Maximum number of retries per download (defaults to infinity)
     #[arg(long)]
     pub max_retries: Option<u32>,
+
+    /// Minimum waiting time between download retries
+    #[arg(long, default_value = "1s")]
+    pub min_retry_interval: FriendlyDuration,
+
+    /// Maximum waiting time between download retries
+    ///
+    /// Information about supported formats:
+    /// https://docs.rs/jiff/0.2.28/jiff/struct.SignedDuration.html#parsing-and-printing
+    #[arg(long, default_value = "16s")]
+    pub max_retry_interval: FriendlyDuration,
 }
 
 impl BackupArgs {
@@ -171,6 +184,8 @@ impl IterationsSyncPolicy {
 #[cfg(test)]
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
+    use jiff::SignedDuration;
+
     use super::*;
 
     mod backup_args {
@@ -234,6 +249,8 @@ mod tests {
                     max_downloads: 4,
                     max_solutions_per_page: 256,
                     max_retries: None,
+                    min_retry_interval: FriendlyDuration(SignedDuration::from_secs(1)),
+                    max_retry_interval: FriendlyDuration(SignedDuration::from_secs(16)),
                 }
             }
 
@@ -456,6 +473,8 @@ mod tests {
                     max_downloads: 4,
                     max_solutions_per_page: 256,
                     max_retries: None,
+                    min_retry_interval: FriendlyDuration(SignedDuration::from_secs(1)),
+                    max_retry_interval: FriendlyDuration(SignedDuration::from_secs(16)),
                 }
             }
 

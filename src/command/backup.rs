@@ -21,6 +21,7 @@ use mini_exercism::api::v2::solution::Solution;
 use mini_exercism::api::v2::{solution, solutions};
 use mini_exercism::cli::get_cli_credentials;
 use mini_exercism::core::Credentials;
+use mini_exercism::http::retry::policies::ExponentialBackoff;
 use mini_exercism::stream::StreamExt;
 use mini_exercism::{api, http};
 use tokio::fs;
@@ -86,12 +87,26 @@ impl BackupCommand {
             .unwrap_or_else(|| {
                 get_cli_credentials().with_context(|| "failed to get Exercism CLI credentials")
             })?;
+
         let max_retries = args.max_retries.unwrap_or(DEFAULT_MAX_RETRIES);
+        let min_retry_interval = args
+            .min_retry_interval
+            .0
+            .try_into()
+            .with_context(|| "min retry interval cannot be negative")?;
+        let max_retry_interval = args
+            .max_retry_interval
+            .0
+            .try_into()
+            .with_context(|| "max retry interval cannot be negative")?;
+        let retry_policy = ExponentialBackoff::builder()
+            .retry_bounds(min_retry_interval, max_retry_interval)
+            .build_with_max_retries(max_retries);
 
         let v1_client =
-            build_client!(api::v1::Client, http_client, credentials, api_base_url, max_retries);
+            build_client!(api::v1::Client, http_client, credentials, api_base_url, retry_policy);
         let v2_client =
-            build_client!(api::v2::Client, http_client, credentials, api_base_url, max_retries);
+            build_client!(api::v2::Client, http_client, credentials, api_base_url, retry_policy);
 
         let limiter = Limiter::new(args.max_downloads);
         let iterations_dir_name = get_iterations_dir_name();
