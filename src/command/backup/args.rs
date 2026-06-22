@@ -7,6 +7,8 @@ use mini_exercism::api::v2::iteration::Iteration;
 use mini_exercism::api::v2::solution::Solution;
 use mini_exercism::api::v2::{iteration, solution};
 
+use crate::duration::FriendlyDuration;
+
 /// Command-line arguments accepted by the [`Backup`](crate::command::Command::Backup) command.
 #[derive(Debug, Clone, Args)]
 pub struct BackupArgs {
@@ -42,12 +44,30 @@ pub struct BackupArgs {
     pub dry_run: bool,
 
     /// Maximum number of concurrent downloads
-    #[arg(short, long, default_value_t = 4)]
+    #[arg(short, long, default_value_t = 2)]
     pub max_downloads: usize,
+
+    /// Maximum number of solutions to fetch at once when iterating solutions
+    #[arg(long, default_value_t = 256)]
+    pub max_solutions_per_page: i64,
 
     /// Maximum number of retries per download (defaults to infinity)
     #[arg(long)]
     pub max_retries: Option<u32>,
+
+    /// Minimum waiting time between download retries
+    #[arg(long, default_value = "1s")]
+    pub min_retry_interval: FriendlyDuration,
+
+    /// Maximum waiting time between download retries
+    ///
+    /// For information about supported formats, see [`SignedDuration`](jiff::SignedDuration).
+    #[arg(
+        long,
+        default_value = "16s",
+        long_help = "Maximum waiting time between download retries\n\nInformation about supported formats:\nhttps://docs.rs/jiff/0.2.28/jiff/struct.SignedDuration.html#parsing-and-printing"
+    )]
+    pub max_retry_interval: FriendlyDuration,
 }
 
 impl BackupArgs {
@@ -167,6 +187,8 @@ impl IterationsSyncPolicy {
 #[cfg(test)]
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
+    use jiff::SignedDuration;
+
     use super::*;
 
     mod backup_args {
@@ -228,7 +250,10 @@ mod tests {
                     iterations_sync_policy: IterationsSyncPolicy::DoNotSync,
                     dry_run: false,
                     max_downloads: 4,
+                    max_solutions_per_page: 256,
                     max_retries: None,
+                    min_retry_interval: FriendlyDuration(SignedDuration::from_secs(1)),
+                    max_retry_interval: FriendlyDuration(SignedDuration::from_secs(16)),
                 }
             }
 
@@ -449,7 +474,10 @@ mod tests {
                     iterations_sync_policy: IterationsSyncPolicy::FullSync,
                     dry_run: false,
                     max_downloads: 4,
+                    max_solutions_per_page: 256,
                     max_retries: None,
+                    min_retry_interval: FriendlyDuration(SignedDuration::from_secs(1)),
+                    max_retry_interval: FriendlyDuration(SignedDuration::from_secs(16)),
                 }
             }
 

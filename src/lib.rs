@@ -10,13 +10,14 @@
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod command;
+pub mod duration;
 pub mod error;
 pub(crate) mod limiter;
 pub(crate) mod task_pool;
 
 use std::str::FromStr;
 
-use clap::Parser;
+use clap::{Args, Parser, ValueEnum};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 pub use error::Error;
 pub use error::Result;
@@ -31,6 +32,10 @@ use crate::command::Command;
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
+    /// Arguments common to all commands.
+    #[command(flatten)]
+    pub common: CommonArgs,
+
     /// Allows control of [`tracing`] verbosity.
     ///
     /// See [`execute`](Cli::execute) documentation for details.
@@ -73,10 +78,37 @@ impl Cli {
         let env_filter = EnvFilter::builder()
             .with_default_directive(default_directive)
             .from_env_lossy();
-        tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
+        let fmt_builder = tracing_subscriber::fmt()
+            .with_env_filter(env_filter)
+            .with_ansi(true)
+            .with_target(false);
+        match cli.common.message_format {
+            MessageFormat::Human => fmt_builder.init(),
+            MessageFormat::Json => fmt_builder.json().init(),
+        }
 
         cli.command.execute().await
     }
+}
+
+/// Supported formats for the log output.
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, ValueEnum)]
+pub enum MessageFormat {
+    /// A human-readable log format. Each event is logged on a single line.
+    #[default]
+    Human,
+
+    /// JSON log format. Each event is logged on a single line in compact form.
+    Json,
+}
+
+/// Command-line arguments common to all commands.
+#[derive(Debug, Clone, Args)]
+pub struct CommonArgs {
+    /// Log output format
+    #[arg(long, global = true, value_enum, default_value_t = MessageFormat::default())]
+    pub message_format: MessageFormat,
 }
 
 #[cfg(test)]

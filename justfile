@@ -184,3 +184,11 @@ unprep *extra_args:
 # Prints state of a docker container to stdout
 @_check-container-state name:
     docker container ls --filter "name={{name}}" --format "{{{{.State}}"
+
+# ----- Project-specific recipes -----
+
+# Run the auxiliaire tool
+auxiliaire *extra_args: (run "auxiliaire" extra_args)
+
+# Run the auxiliaire tool's backup command
+backup *extra_args: (run "auxiliaire" "backup" extra_args)
