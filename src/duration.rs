@@ -26,3 +26,45 @@ impl Display for FriendlyDuration {
         write!(f, "{:#}", self.0)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::ops::Add;
+
+    use assert_matches::assert_matches;
+
+    use super::*;
+
+    mod friendly_duration {
+        use super::*;
+
+        mod from_str {
+            use super::*;
+
+            #[test]
+            fn valid() {
+                let duration = "12s".parse::<FriendlyDuration>();
+                assert_matches!(duration, Ok(FriendlyDuration(duration)) => {
+                    assert_eq!(SignedDuration::from_secs(12), duration);
+                });
+            }
+
+            #[test]
+            fn invalid() {
+                let duration = "fourty-two".parse::<FriendlyDuration>();
+                assert!(duration.is_err());
+            }
+        }
+    }
+
+    mod display {
+        use super::*;
+
+        #[test]
+        fn friendly() {
+            let duration =
+                FriendlyDuration(SignedDuration::from_mins(2).add(SignedDuration::from_secs(3)));
+            assert_eq!("2m 3s", duration.to_string());
+        }
+    }
+}
