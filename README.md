@@ -32,6 +32,8 @@ To see all commands supported by `auxiliaire`, simply run it with `-h` (for shor
 
 ### `backup` command
 
+_**NOTE**: Exercism now has a built-in backup feature called [GitHub Syncer](https://exercism.org/settings/github_syncer) that you can use instead if what you want is to back up your solutions to a GitHub repository._
+
 This command can be used to download all solutions you submitted to the Exercism platform for backup.
 
 ```sh
