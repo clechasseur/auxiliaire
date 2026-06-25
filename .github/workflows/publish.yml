@@ -1,13 +1,14 @@
 name: Publish to crates.io
 
 on:
-  push:
-    tags:
-      - v[0-9]+.[0-9]+.[0-9]+
+  release:
+    types:
+      - published
   workflow_dispatch:
 
 jobs:
   publish:
+    if: ${{ github.repository_owner == 'clechasseur' }} # Don't build on forks
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
