@@ -29,7 +29,7 @@ jobs:
           version: v1.17.9
 
       - name: Install required tools
-        uses: clechasseur/rs-cargo@v5.0.6
+        uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
           args: -y just@1.48.1
