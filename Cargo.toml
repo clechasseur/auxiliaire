@@ -29,8 +29,8 @@ clap-verbosity-flag = "3.0.4"
 itertools = "0.15.0"
 jiff = "0.2.29"
 mini_exercism = { version = "8.1.0", features = ["cli", "cookies"] }
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "io-util", "macros", "sync", "fs"] }
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["ansi", "env-filter", "json"] }
