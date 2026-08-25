@@ -27,23 +27,21 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        # Temporary fork of `Swatinem/rust-cache` with support for caching `cargo binstall`ed binaries
-        # Should be switched if this feature is merged in the main action: https://github.com/Swatinem/rust-cache/pull/325
-        uses: clechasseur/rust-cache@45dfca100f1e255035d993b3dc7a8c356de54bf8
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           prefix-key: v1.0.0-rust
           cache-on-failure: true
 
       - name: Setup cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.17.9
+        uses: cargo-bins/cargo-binstall@v1.21.1
         with:
-          version: v1.17.9
+          version: v1.21.1
 
       - name: Install cargo-hack
         uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
-          args: -y cargo-hack@0.6.44
+          args: -y cargo-hack@0.6.45
 
       - name: Run clippy
         uses: clechasseur/rs-clippy-check@v6.0.7
@@ -90,22 +88,22 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        uses: clechasseur/rust-cache@45dfca100f1e255035d993b3dc7a8c356de54bf8
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           prefix-key: v1.0.0-rust
           key: msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
           cache-on-failure: true
 
       - name: Setup cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.17.9
+        uses: cargo-bins/cargo-binstall@v1.21.1
         with:
-          version: v1.17.9
+          version: v1.21.1
 
       - name: Install required tools
         uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
-          args: -y just@1.48.1 cargo-hack@0.6.44 cargo-minimal-versions@0.1.37 cargo-msrv-prep@2.1.1
+          args: -y just@1.58.0 cargo-hack@0.6.45 cargo-minimal-versions@0.1.37 cargo-msrv-prep@2.1.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -130,21 +128,21 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        uses: clechasseur/rust-cache@45dfca100f1e255035d993b3dc7a8c356de54bf8
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           prefix-key: v1.0.0-rust
           cache-on-failure: true
 
       - name: Setup cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.17.9
+        uses: cargo-bins/cargo-binstall@v1.21.1
         with:
-          version: v1.17.9
+          version: v1.21.1
 
       - name: Install required tools
         uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
-          args: -y just@1.48.1 cargo-hack@0.6.44
+          args: -y just@1.58.0 cargo-hack@0.6.45
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -168,22 +166,22 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        uses: clechasseur/rust-cache@45dfca100f1e255035d993b3dc7a8c356de54bf8
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           prefix-key: v1.0.0-rust
           cache-targets: false
           cache-on-failure: true
 
       - name: Setup cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.17.9
+        uses: cargo-bins/cargo-binstall@v1.21.1
         with:
-          version: v1.17.9
+          version: v1.21.1
 
       - name: Install required tools
         uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
-          args: -y just@1.48.1 cargo-llvm-cov@0.8.5
+          args: -y just@1.58.0 cargo-llvm-cov@0.8.7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -219,22 +217,22 @@ jobs:
           cache: false
 
       - name: Rust Cache
-        uses: clechasseur/rust-cache@45dfca100f1e255035d993b3dc7a8c356de54bf8
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           prefix-key: v1.0.0-rust
           cache-targets: false
           cache-on-failure: true
 
       - name: Setup cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.17.9
+        uses: cargo-bins/cargo-binstall@v1.21.1
         with:
-          version: v1.17.9
+          version: v1.21.1
 
       - name: Install just
         uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
-          args: -y just@1.48.1
+          args: -y just@1.58.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

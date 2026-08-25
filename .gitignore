@@ -30,6 +30,7 @@ codecov.json
 
 # Local environment overrides
 .env
+.env.bak
 
 # Always include .keep files
 !**/.keep
