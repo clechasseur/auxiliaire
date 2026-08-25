@@ -22,17 +22,16 @@ jobs:
           toolchain: stable
           cache: false
 
-
       - name: Setup cargo-binstall
-        uses: cargo-bins/cargo-binstall@v1.17.9
+        uses: cargo-bins/cargo-binstall@v1.21.1
         with:
-          version: v1.17.9
+          version: v1.21.1
 
       - name: Install required tools
         uses: clechasseur/rs-cargo@v5.0.8
         with:
           command: binstall
-          args: -y just@1.48.1
+          args: -y just@1.58.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
